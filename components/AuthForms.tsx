@@ -60,26 +60,26 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
   }
 
   return (
-    <div className="rounded-[1.5rem] border border-white/10 bg-[#101820]/85 p-5 shadow-2xl shadow-black/30 backdrop-blur">
-      <div className="grid grid-cols-2 rounded-xl bg-black/25 p-1 text-sm">
+    <div className="border-l border-white/10 pl-6">
+      <div className="flex gap-5 border-b border-white/10 text-sm">
         <button
           type="button"
           onClick={() => setMode("register")}
-          className={`rounded-lg px-3 py-2 transition ${mode === "register" ? "bg-[#e6f15a] text-[#0b1117]" : "text-slate-300 hover:text-white"}`}
+          className={`border-b-2 px-0 pb-3 transition ${mode === "register" ? "border-[#e6f15a] text-[#e6f15a]" : "border-transparent text-slate-400 hover:text-white"}`}
         >
           Request access
         </button>
         <button
           type="button"
           onClick={() => setMode("login")}
-          className={`rounded-lg px-3 py-2 transition ${mode === "login" ? "bg-[#e6f15a] text-[#0b1117]" : "text-slate-300 hover:text-white"}`}
+          className={`border-b-2 px-0 pb-3 transition ${mode === "login" ? "border-[#e6f15a] text-[#e6f15a]" : "border-transparent text-slate-400 hover:text-white"}`}
         >
           Log in
         </button>
       </div>
 
       <form
-        className="mt-5 space-y-4"
+        className="mt-6 space-y-5"
         onSubmit={(event) => {
           event.preventDefault();
           if (mode === "register") {
@@ -97,7 +97,7 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-white outline-none transition focus:border-[#e6f15a]"
+                className="mt-2 w-full border-0 border-b border-white/15 bg-transparent px-0 py-2.5 text-white outline-none transition placeholder:text-slate-600 focus:border-[#e6f15a]"
               />
             </label>
             <label className="block text-sm text-slate-300">
@@ -105,7 +105,7 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
               <input
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-white outline-none transition focus:border-[#e6f15a]"
+                className="mt-2 w-full border-0 border-b border-white/15 bg-transparent px-0 py-2.5 text-white outline-none transition placeholder:text-slate-600 focus:border-[#e6f15a]"
               />
             </label>
           </>
@@ -118,7 +118,7 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="mt-1 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-white outline-none transition focus:border-[#e6f15a]"
+            className="mt-2 w-full border-0 border-b border-white/15 bg-transparent px-0 py-2.5 text-white outline-none transition placeholder:text-slate-600 focus:border-[#e6f15a]"
           />
         </label>
 
@@ -130,7 +130,7 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Only required for admins"
-              className="mt-1 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-white outline-none transition focus:border-[#e6f15a]"
+              className="mt-2 w-full border-0 border-b border-white/15 bg-transparent px-0 py-2.5 text-white outline-none transition placeholder:text-slate-600 focus:border-[#e6f15a]"
             />
           </label>
         )}
@@ -140,7 +140,7 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
 
         <button
           disabled={isLoading}
-          className="w-full rounded-xl bg-[#e6f15a] px-4 py-3 font-semibold text-[#0b1117] transition hover:bg-[#f2ff75] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 w-full rounded-full bg-[#e6f15a] px-4 py-3 font-semibold text-[#0b1117] transition hover:bg-[#f2ff75] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isLoading ? "Working..." : mode === "register" ? "Send request" : "Continue"}
         </button>

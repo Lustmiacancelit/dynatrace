@@ -50,9 +50,10 @@ export default function Home() {
                 Admins approve each customer before login access is issued.
               </p>
 
-              <div className="mt-10 grid gap-3 sm:grid-cols-2">
+              <div className="mt-10 grid gap-x-8 gap-y-4 sm:grid-cols-2">
                 {FEATURES.map((feature) => (
-                  <div key={feature} className="border-l border-[#e6f15a]/50 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">
+                  <div key={feature} className="flex items-start gap-3 text-sm leading-6 text-slate-200">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#e6f15a]" />
                     {feature}
                   </div>
                 ))}
