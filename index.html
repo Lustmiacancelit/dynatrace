@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dynatrace DQL & Logs Master Cheat Sheet</title>
+<style>
+:root{
+  --bg:#070b14; --panel:#111827; --panel2:#0b1220; --code:#020617;
+  --border:#334155; --text:#f8fafc; --muted:#a8b3c7;
+  --cyan:#22d3ee; --purple:#8b5cf6; --green:#22c55e; --orange:#f59e0b; --red:#ef4444; --blue:#60a5fa;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;line-height:1.55}
+header{position:sticky;top:0;z-index:30;background:#050914;border-bottom:1px solid var(--border);padding:18px}
+h1{margin:0 0 8px;font-size:28px}
+.subtitle{margin:0 0 14px;color:var(--muted)}
+.search{width:100%;padding:14px 16px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:16px}
+.layout{display:grid;grid-template-columns:290px 1fr;gap:20px;padding:24px}
+nav{position:sticky;top:128px;height:calc(100vh - 150px);overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
+nav a{display:block;color:#dbeafe;text-decoration:none;padding:8px 10px;border-radius:8px;font-size:14px}
+nav a:hover{background:#1f2937}
+main{max-width:1650px}
+section{margin-bottom:34px}
+h2{border-left:5px solid var(--purple);padding-left:12px;margin:0 0 14px;font-size:25px}
+h3{margin:6px 0 8px;font-size:18px}
+p{color:var(--muted);margin:6px 0 12px}
+ul,ol{color:#cbd5e1}
+code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:#e0f2fe}
+.tip{background:#172554;border-left:5px solid var(--cyan);padding:14px;border-radius:8px;margin-bottom:18px}
+.warning{border-left-color:var(--orange);background:#1c1917}
+.danger{border-left-color:var(--red);background:#1f1111}
+.success{border-left-color:var(--green);background:#0d1f14}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
+.badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:12px;margin-bottom:8px;font-weight:bold}
+.b-content{background:#064e3b;color:#bbf7d0}
+.b-status{background:#7f1d1d;color:#fecaca}
+.b-dql{background:#7c2d12;color:#fed7aa}
+.b-field{background:#1e3a8a;color:#bfdbfe}
+.b-workflow{background:#3b0764;color:#e9d5ff}
+.b-func{background:#312e81;color:#ddd6fe}
+.where{font-size:13px;color:#c4b5fd;margin:8px 0;font-weight:bold}
+.codewrap{position:relative}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--code);border:1px solid var(--border);border-radius:10px;padding:14px 78px 14px 14px;min-height:46px;color:#f8fafc;font-weight:700;overflow:auto}
+button.copy{position:absolute;top:8px;right:8px;background:#334155;color:#fff;border:0;border-radius:8px;padding:8px 10px;cursor:pointer}
+button.copy:hover{background:#475569}
+.table{width:100%;border-collapse:collapse;margin:12px 0;background:var(--panel);border-radius:10px;overflow:hidden}
+.table th,.table td{border:1px solid var(--border);padding:10px;text-align:left;vertical-align:top}
+.table th{background:#1e293b}
+.stepbox{background:#0f172a;border:1px dashed #475569;border-radius:10px;padding:12px 14px;margin:12px 0}
+.stepbox b{color:#67e8f9}
+.small{font-size:13px}.footer{color:#94a3b8;padding:20px;text-align:center;border-top:1px solid var(--border)}
+@media(max-width:950px){.layout{grid-template-columns:1fr}nav{position:relative;top:0;height:auto}}
+</style>
+</head>
+<body>
+<header>
+<h1>Dynatrace DQL & Logs Master Cheat Sheet</h1>
+<p class="subtitle">Beginner + advanced commands for Dynatrace Logs filter bar and DQL/Grail. Built around the filter style shown in your Dynatrace tenant: <code>content = *keyword*</code>, <code>status = ERROR</code>, and DQL with <code>fetch logs</code>.</p>
+<input id="search" class="search" placeholder="Search: content, status, matchesPhrase, parse, summarize, endpoint, trace, Kubernetes, AWS, database, 500..." />
+</header>
+
+<div class="layout">
+<nav>
+<a href="#start">Start Here</a>
+<a href="#bar-vs-dql">Filter Bar vs DQL</a>
+<a href="#content-status">content & status</a>
+<a href="#fix-your-query">Fix Your Query</a>
+<a href="#filterbar">Logs Filter Bar Commands</a>
+<a href="#fields">Useful Fields</a>
+<a href="#dql-basics">DQL Basics</a>
+<a href="#dql-commands">DQL Command Reference</a>
+<a href="#dql-functions">DQL Functions</a>
+<a href="#dql-logs">DQL Logs Samples</a>
+<a href="#json">JSON / Instance Searches</a>
+<a href="#api">API / Endpoint Troubleshooting</a>
+<a href="#traces">Distributed Tracing</a>
+<a href="#kubernetes">Kubernetes</a>
+<a href="#java">Java / Spring Boot</a>
+<a href="#database">Database</a>
+<a href="#network">Network</a>
+<a href="#aws">AWS</a>
+<a href="#security">Security</a>
+<a href="#dashboards">Dashboards / Summaries</a>
+<a href="#workflows">Workflows</a>
+<a href="#patterns">Reusable Patterns</a>
+</nav>
+
+<main>
+
+<section id="start" class="item">
+<h2>Start Here</h2>
+<div class="tip success">
+<b>For the normal Dynatrace Logs filter bar, your tenant works best with:</b><br><br>
+<code>content = *500*</code><br>
+<code>content = *Exception*</code><br>
+<code>status = ERROR</code><br><br>
+Use <code>content</code> when searching inside the log text. Use <code>status</code> when filtering by Dynatrace severity.
+</div>
+
+<div class="tip warning">
+<b>Important:</b> DQL commands like <code>fetch logs | filter ...</code> go in <b>Logs → Open with / DQL mode</b>, <b>Notebooks</b>, or <b>Grail query</b>. They do not belong in the normal filter bar.
+</div>
+</section>
+
+<section id="bar-vs-dql" class="item">
+<h2>Filter Bar vs DQL</h2>
+<table class="table">
+<tr><th>Where you are</th><th>Use this style</th><th>Example</th></tr>
+<tr>
+<td><b>Logs filter bar</b></td>
+<td>Field filters</td>
+<td><code>content = *500*</code><br><code>status = ERROR</code></td>
+</tr>
+<tr>
+<td><b>DQL / Notebooks / Grail</b></td>
+<td>Full DQL pipeline</td>
+<td><code>fetch logs<br>| filter matchesPhrase(content, "500")</code></td>
+</tr>
+<tr>
+<td><b>Facets left panel</b></td>
+<td>Click field values</td>
+<td>Status → Error, K8s → Pod, Log source, Host</td>
+</tr>
+</table>
+</section>
+
+<section id="content-status" class="item">
+<h2>content & status: What They Are For</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-content">content</span><h3>content</h3><p>Searches inside the actual log message text. Use this for endpoints, HTTP codes, trace IDs, exception names, account IDs, AWS errors, etc.</p><div class="where">Logs filter bar</div><div class="codewrap"><pre>content = *500*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-status">status</span><h3>status</h3><p>Filters by Dynatrace severity: ERROR, WARNING, INFO, NONE. Use this to reduce noise before searching content.</p><div class="where">Logs filter bar</div><div class="codewrap"><pre>status = ERROR</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-field">loglevel</span><h3>loglevel</h3><p>Some apps also populate application log level. Use it if status does not match what you expect.</p><div class="where">Logs filter bar</div><div class="codewrap"><pre>loglevel = ERROR</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-field">combined</span><h3>Combine filters</h3><p>Apply filters one by one as chips. This means ERROR logs that contain the endpoint.</p><div class="where">Logs filter bar</div><div class="codewrap"><pre>status = ERROR
+content = */gw/api/v1/sso*</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="fix-your-query" class="item">
+<h2>Fix Your Example Query</h2>
+<p>Your example is close, but the quotes around JSON need escaping in DQL, and <code>OR</code> should usually be lowercase <code>or</code>. Also, in DQL status values are strings.</p>
+
+<div class="card item">
+<span class="badge b-dql">DQL</span>
+<h3>Correct DQL version</h3>
+<p>Find ERROR or WARN logs where the content contains the JSON instance path.</p>
+<div class="where">Use in DQL / Notebooks / Grail query mode</div>
+<div class="codewrap"><pre>fetch logs
+| filter status == "ERROR" or status == "WARN"
+| filter matchesPhrase(content, "\"instance\":\"/gw/api/v1/sso\"")
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div>
+</div>
+
+<div class="card item">
+<span class="badge b-dql">DQL</span>
+<h3>Simpler DQL version</h3>
+<p>Easier if the JSON escaping is confusing: just search for the endpoint path.</p>
+<div class="where">Use in DQL / Notebooks / Grail query mode</div>
+<div class="codewrap"><pre>fetch logs
+| filter status in ("ERROR", "WARN")
+| filter matchesPhrase(content, "/gw/api/v1/sso")
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div>
+</div>
+
+<div class="card item">
+<span class="badge b-content">Filter bar</span>
+<h3>Normal Logs filter bar version</h3>
+<p>Apply these as filter chips in the Logs UI.</p>
+<div class="where">Use in normal Logs filter bar</div>
+<div class="codewrap"><pre>status = ERROR
+content = */gw/api/v1/sso*</pre><button class="copy">Copy</button></div>
+</div>
+</section>
+
+<section id="filterbar" class="item">
+<h2>Logs Filter Bar Commands</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-content">content</span><h3>HTTP 500</h3><p>Internal server errors.</p><div class="codewrap"><pre>content = *500*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>HTTP 502</h3><p>Bad gateway / proxy / downstream issue.</p><div class="codewrap"><pre>content = *502*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>HTTP 503</h3><p>Service unavailable.</p><div class="codewrap"><pre>content = *503*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>HTTP 504</h3><p>Gateway timeout.</p><div class="codewrap"><pre>content = *504*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>HTTP 401</h3><p>Authentication issue.</p><div class="codewrap"><pre>content = *401*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>HTTP 403</h3><p>Authorization/permission issue.</p><div class="codewrap"><pre>content = *403*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>HTTP 404</h3><p>Missing endpoint/resource.</p><div class="codewrap"><pre>content = *404*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>HTTP 429</h3><p>Rate limiting.</p><div class="codewrap"><pre>content = *429*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>Exception</h3><p>General Java/app exception.</p><div class="codewrap"><pre>content = *Exception*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>Caused by</h3><p>Find root cause lines in stack traces.</p><div class="codewrap"><pre>content = *Caused by*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>Timeout</h3><p>Network/API/database timeout.</p><div class="codewrap"><pre>content = *timeout*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>Endpoint</h3><p>Replace with your endpoint.</p><div class="codewrap"><pre>content = */gw/api/v1/sso-sessions*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">content</span><h3>Trace ID</h3><p>Replace with actual traceId/requestId.</p><div class="codewrap"><pre>content = *YOUR_TRACE_ID*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-status">status</span><h3>Error status</h3><p>Only ERROR logs.</p><div class="codewrap"><pre>status = ERROR</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-status">status</span><h3>Warning status</h3><p>Only WARNING logs.</p><div class="codewrap"><pre>status = WARNING</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-status">status</span><h3>Info status</h3><p>Only INFO logs.</p><div class="codewrap"><pre>status = INFO</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="fields" class="item">
+<h2>Useful Fields in Logs</h2>
+<table class="table">
+<tr><th>Field</th><th>Meaning</th><th>Filter bar example</th><th>DQL example</th></tr>
+<tr><td>content</td><td>Log message text</td><td><code>content = *500*</code></td><td><code>matchesPhrase(content, "500")</code></td></tr>
+<tr><td>status</td><td>Dynatrace severity</td><td><code>status = ERROR</code></td><td><code>status == "ERROR"</code></td></tr>
+<tr><td>loglevel</td><td>App log level</td><td><code>loglevel = ERROR</code></td><td><code>loglevel == "ERROR"</code></td></tr>
+<tr><td>log.source</td><td>Log file/source</td><td><code>log.source = /var/log/app.log</code></td><td><code>contains(log.source, "app.log")</code></td></tr>
+<tr><td>k8s.cluster.name</td><td>K8s cluster</td><td><code>k8s.cluster.name = my-cluster</code></td><td><code>k8s.cluster.name == "my-cluster"</code></td></tr>
+<tr><td>k8s.namespace.name</td><td>K8s namespace</td><td><code>k8s.namespace.name = production</code></td><td><code>k8s.namespace.name == "production"</code></td></tr>
+<tr><td>k8s.pod.name</td><td>K8s pod</td><td><code>k8s.pod.name = my-pod</code></td><td><code>contains(k8s.pod.name, "my-pod")</code></td></tr>
+<tr><td>k8s.container.name</td><td>K8s container</td><td><code>k8s.container.name = app</code></td><td><code>k8s.container.name == "app"</code></td></tr>
+<tr><td>host.name</td><td>Host/server</td><td><code>host.name = server01</code></td><td><code>host.name == "server01"</code></td></tr>
+<tr><td>dt.process_group.detected_name</td><td>Detected process/app</td><td><code>dt.process_group.detected_name = app</code></td><td><code>contains(dt.process_group.detected_name, "app")</code></td></tr>
+<tr><td>aws.account.id</td><td>AWS account</td><td><code>aws.account.id = 123456789012</code></td><td><code>aws.account.id == "123456789012"</code></td></tr>
+<tr><td>aws.region</td><td>AWS region</td><td><code>aws.region = us-east-1</code></td><td><code>aws.region == "us-east-1"</code></td></tr>
+</table>
+</section>
+
+<section id="dql-basics" class="item">
+<h2>DQL Basics</h2>
+<div class="tip">
+A DQL query starts by loading data, then each line after <code>|</code> transforms or filters the data.
+</div>
+<div class="grid">
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Basic logs query</h3><div class="codewrap"><pre>fetch logs
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Use timeframe in query</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Absolute timeframe</h3><div class="codewrap"><pre>fetch logs, timeframe: "2026-05-28T00:00:00Z/2026-05-29T00:00:00Z"
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Filter errors</h3><div class="codewrap"><pre>fetch logs
+| filter status == "ERROR"
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="dql-commands" class="item">
+<h2>DQL Command Reference with Examples</h2>
+<p>This section does not include every single niche command option, but it includes the main command families you will use for troubleshooting, reporting, and dashboards.</p>
+<div class="grid">
+
+<div class="card item"><span class="badge b-dql">fetch</span><h3>fetch</h3><p>Loads data: logs, spans, events, bizevents, metrics depending on availability.</p><div class="codewrap"><pre>fetch logs, from: -2h
+| limit 100</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">filter</span><h3>filter</h3><p>Keeps only matching records.</p><div class="codewrap"><pre>fetch logs
+| filter status == "ERROR"
+| filter matchesPhrase(content, "timeout")</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">sort</span><h3>sort</h3><p>Sorts records.</p><div class="codewrap"><pre>fetch logs
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">limit</span><h3>limit</h3><p>Limits result count.</p><div class="codewrap"><pre>fetch logs
+| limit 50</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">fields</span><h3>fields</h3><p>Shows only selected fields.</p><div class="codewrap"><pre>fetch logs
+| fields timestamp, status, content, k8s.pod.name
+| limit 100</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">fieldsAdd</span><h3>fieldsAdd</h3><p>Adds calculated fields.</p><div class="codewrap"><pre>fetch logs
+| fieldsAdd short_message = substring(content, 0, 120)
+| fields timestamp, status, short_message</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">fieldsRemove</span><h3>fieldsRemove</h3><p>Removes fields from output.</p><div class="codewrap"><pre>fetch logs
+| fieldsRemove content
+| limit 100</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">summarize</span><h3>summarize</h3><p>Aggregates records.</p><div class="codewrap"><pre>fetch logs
+| summarize count(), by:{status}
+| sort count desc</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">makeTimeseries</span><h3>makeTimeseries</h3><p>Creates time-series data for charts.</p><div class="codewrap"><pre>fetch logs, from: -24h
+| filter status == "ERROR"
+| makeTimeseries errors = count(), interval: 15m</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">parse</span><h3>parse</h3><p>Extracts values from text.</p><div class="codewrap"><pre>fetch logs
+| filter matchesPhrase(content, "traceId")
+| parse content, "LD 'traceId\":\"' LD:traceId '\"' LD"
+| fields timestamp, traceId, content
+| limit 100</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">expand</span><h3>expand</h3><p>Expands array values into rows.</p><div class="codewrap"><pre>fetch logs
+| fields timestamp, tags
+| expand tags
+| limit 100</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">dedup</span><h3>dedup</h3><p>Removes duplicates by a field.</p><div class="codewrap"><pre>fetch logs
+| dedup content
+| limit 100</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">lookup</span><h3>lookup</h3><p>Joins/enriches with another dataset when available.</p><div class="codewrap"><pre>fetch logs
+| lookup [ fetch events ], sourceField:dt.entity.host, lookupField:dt.entity.host</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">join</span><h3>join</h3><p>Combines records from two subqueries when supported.</p><div class="codewrap"><pre>fetch logs
+| filter status == "ERROR"
+| join [ fetch spans | fields trace.id, request.url ], on:{trace.id}</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">append</span><h3>append</h3><p>Appends results from another query.</p><div class="codewrap"><pre>fetch logs
+| filter status == "ERROR"
+| append [ fetch logs | filter status == "WARNING" ]</pre><button class="copy">Copy</button></div></div>
+
+<div class="card item"><span class="badge b-dql">data</span><h3>data</h3><p>Creates inline test data.</p><div class="codewrap"><pre>data record(status="ERROR", count=10),
+     record(status="WARN", count=5)</pre><button class="copy">Copy</button></div></div>
+
+</div>
+</section>
+
+<section id="dql-functions" class="item">
+<h2>DQL Functions & Operators</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-func">matchesPhrase</span><h3>matchesPhrase</h3><p>Best function for phrase/token matching in content.</p><div class="codewrap"><pre>fetch logs
+| filter matchesPhrase(content, "Internal Server Error")</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">contains</span><h3>contains</h3><p>Substring search. Useful for exact text fragments.</p><div class="codewrap"><pre>fetch logs
+| filter contains(content, "/gw/api/v1/sso")</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">startsWith</span><h3>startsWith</h3><p>Checks beginning of a field.</p><div class="codewrap"><pre>fetch logs
+| filter startsWith(content, "ERROR")</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">endsWith</span><h3>endsWith</h3><p>Checks end of a field.</p><div class="codewrap"><pre>fetch logs
+| filter endsWith(log.source, "application.log")</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">in</span><h3>in</h3><p>Checks if a value is in a list.</p><div class="codewrap"><pre>fetch logs
+| filter status in ("ERROR", "WARN")</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">isNull</span><h3>isNull / isNotNull</h3><p>Checks missing/present fields.</p><div class="codewrap"><pre>fetch logs
+| filter isNotNull(k8s.pod.name)</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">count</span><h3>count</h3><p>Counts records.</p><div class="codewrap"><pre>fetch logs
+| summarize total = count()</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">countIf</span><h3>countIf</h3><p>Counts only records meeting condition.</p><div class="codewrap"><pre>fetch logs
+| summarize errors = countIf(status == "ERROR"), warnings = countIf(status == "WARN")</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">avg/min/max</span><h3>avg / min / max</h3><p>Common aggregations, especially for spans/metrics.</p><div class="codewrap"><pre>fetch spans
+| summarize avg_duration = avg(duration), max_duration = max(duration), by:{request.url}</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">toString</span><h3>toString</h3><p>Casts values to string.</p><div class="codewrap"><pre>fetch logs
+| fieldsAdd status_text = toString(status)</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">substring</span><h3>substring</h3><p>Creates shorter message previews.</p><div class="codewrap"><pre>fetch logs
+| fieldsAdd preview = substring(content, 0, 200)</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-func">lower</span><h3>lower / upper</h3><p>Normalize case for comparisons.</p><div class="codewrap"><pre>fetch logs
+| filter contains(lower(content), "timeout")</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="dql-logs" class="item">
+<h2>DQL Logs Samples</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Error or Warning logs</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| filter status in ("ERROR", "WARN")
+| sort timestamp desc
+| limit 200</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Endpoint + 500</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| filter matchesPhrase(content, "/gw/api/v1/sso")
+| filter matchesPhrase(content, "500")
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Top statuses</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| summarize logs = count(), by:{status}
+| sort logs desc</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Top pods by error count</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| filter status == "ERROR"
+| summarize errors = count(), by:{k8s.pod.name}
+| sort errors desc
+| limit 20</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Errors over time</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| filter status == "ERROR"
+| makeTimeseries errors = count(), interval: 15m</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Search multiple terms correctly</h3><div class="codewrap"><pre>fetch logs
+| filter matchesPhrase(content, "500")
+   or matchesPhrase(content, "501")
+   or matchesPhrase(content, "502")
+   or matchesPhrase(content, "503")
+   or matchesPhrase(content, "504")
+| sort timestamp desc</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="json" class="item">
+<h2>JSON / Instance Searches</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Search JSON instance path</h3><p>Use escaped quotes when matching JSON syntax exactly.</p><div class="codewrap"><pre>fetch logs
+| filter matchesPhrase(content, "\"instance\":\"/gw/api/v1/sso-sessions\"")
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Search only the endpoint path</h3><p>Usually easier and less fragile.</p><div class="codewrap"><pre>fetch logs
+| filter matchesPhrase(content, "/gw/api/v1/sso-sessions")
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Search JSON title</h3><div class="codewrap"><pre>fetch logs
+| filter matchesPhrase(content, "\"title\":\"Internal Server Error\"")
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Search traceId in JSON</h3><div class="codewrap"><pre>fetch logs
+| filter matchesPhrase(content, "\"traceId\":\"YOUR_TRACE_ID\"")
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="api" class="item">
+<h2>API / Endpoint Troubleshooting</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Find endpoint</h3><div class="codewrap"><pre>content = */gw/api/v1/sso-sessions*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Find downstream URL</h3><div class="codewrap"><pre>content = *https://api.ibkr.com*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Endpoint failed logs</h3><div class="codewrap"><pre>fetch logs
+| filter status == "ERROR"
+| filter matchesPhrase(content, "/gw/api/v1/sso-sessions")
+| sort timestamp desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Top API URLs in logs</h3><p>Works if URI appears in content. Adjust parse pattern for your log format.</p><div class="codewrap"><pre>fetch logs
+| filter matchesPhrase(content, "URI")
+| parse content, "LD 'URI=' LD:uri ', ' LD"
+| summarize count(), by:{uri}
+| sort count desc
+| limit 20</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="traces" class="item">
+<h2>Distributed Tracing</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Failed spans</h3><div class="codewrap"><pre>fetch spans, from: -24h
+| filter request.is_failed == true
+| sort start_time desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>HTTP 5xx spans</h3><div class="codewrap"><pre>fetch spans, from: -24h
+| filter http.status_code >= 500
+| sort start_time desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Slow spans</h3><div class="codewrap"><pre>fetch spans, from: -24h
+| filter duration > 5s
+| sort duration desc
+| limit 100</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Top failing endpoints</h3><div class="codewrap"><pre>fetch spans, from: -24h
+| filter http.status_code >= 500
+| summarize failures = count(), by:{request.url}
+| sort failures desc
+| limit 20</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Top slow endpoints</h3><div class="codewrap"><pre>fetch spans, from: -24h
+| summarize avg_duration = avg(duration), max_duration = max(duration), calls = count(), by:{request.url}
+| sort avg_duration desc
+| limit 20</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="kubernetes" class="item">
+<h2>Kubernetes</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-field">Filter bar</span><h3>Namespace</h3><div class="codewrap"><pre>k8s.namespace.name = production</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-field">Filter bar</span><h3>Pod</h3><div class="codewrap"><pre>k8s.pod.name = my-pod-name</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>CrashLoopBackOff</h3><div class="codewrap"><pre>content = *CrashLoopBackOff*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>OOMKilled</h3><div class="codewrap"><pre>content = *OOMKilled*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Image pull</h3><div class="codewrap"><pre>content = *ImagePullBackOff*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Top noisy pods</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| summarize logs = count(), by:{k8s.pod.name}
+| sort logs desc
+| limit 20</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="java" class="item">
+<h2>Java / Spring Boot</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Spring downstream 5xx</h3><div class="codewrap"><pre>content = *HttpServerErrorException*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Null pointer</h3><div class="codewrap"><pre>content = *NullPointerException*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Out of memory</h3><div class="codewrap"><pre>content = *OutOfMemoryError*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>GC overhead</h3><div class="codewrap"><pre>content = *GC overhead*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>RestTemplate</h3><div class="codewrap"><pre>content = *RestTemplate*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>WebClient</h3><div class="codewrap"><pre>content = *WebClient*</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="database" class="item">
+<h2>Database</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>SQL exception</h3><div class="codewrap"><pre>content = *SQLException*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>JDBC</h3><div class="codewrap"><pre>content = *JDBC*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Connection pool</h3><div class="codewrap"><pre>content = *connection pool*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Deadlock</h3><div class="codewrap"><pre>content = *deadlock*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Slow DB spans</h3><div class="codewrap"><pre>fetch spans, from: -24h
+| filter isNotNull(db.statement)
+| sort duration desc
+| limit 50</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="network" class="item">
+<h2>Network</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Connection refused</h3><div class="codewrap"><pre>content = *Connection refused*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Connection reset</h3><div class="codewrap"><pre>content = *Connection reset*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>DNS issue</h3><div class="codewrap"><pre>content = *UnknownHostException*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>SSL</h3><div class="codewrap"><pre>content = *SSLHandshakeException*</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="aws" class="item">
+<h2>AWS</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-field">Filter bar</span><h3>AWS account</h3><div class="codewrap"><pre>aws.account.id = 123456789012</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-field">Filter bar</span><h3>AWS region</h3><div class="codewrap"><pre>aws.region = us-east-1</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Access denied</h3><div class="codewrap"><pre>content = *AccessDenied*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>S3 ListBucket</h3><div class="codewrap"><pre>content = *ListBucket*</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="security" class="item">
+<h2>Security</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Invalid token</h3><div class="codewrap"><pre>content = *invalid token*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Expired token</h3><div class="codewrap"><pre>content = *expired token*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Bad credentials</h3><div class="codewrap"><pre>content = *bad credentials*</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-content">Filter bar</span><h3>Forbidden</h3><div class="codewrap"><pre>content = *Forbidden*</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="dashboards" class="item">
+<h2>Dashboards / Summaries</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Errors by status</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| summarize count(), by:{status}
+| sort count desc</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Errors by service/process</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| filter status == "ERROR"
+| summarize errors = count(), by:{dt.process_group.detected_name}
+| sort errors desc
+| limit 20</pre><button class="copy">Copy</button></div></div>
+<div class="card item"><span class="badge b-dql">DQL</span><h3>Warnings over time</h3><div class="codewrap"><pre>fetch logs, from: -24h
+| filter status == "WARN" or status == "WARNING"
+| makeTimeseries warnings = count(), interval: 15m</pre><button class="copy">Copy</button></div></div>
+</div>
+</section>
+
+<section id="workflows" class="item">
+<h2>Troubleshooting Workflows</h2>
+<div class="grid">
+<div class="card item"><span class="badge b-workflow">Workflow</span><h3>API 500</h3>
+<ol>
+<li>Filter bar: <code>content = *500*</code></li>
+<li>Filter bar: <code>content = */your/endpoint*</code></li>
+<li>DQL: search endpoint + status ERROR.</li>
+<li>Open log details and look for traceId/requestId.</li>
+<li>Go to Distributed Tracing or Services → Failures.</li>
+</ol></div>
+<div class="card item"><span class="badge b-workflow">Workflow</span><h3>No logs found</h3>
+<ol>
+<li>Increase timeframe to Last 24 hours or Last 7 days.</li>
+<li>Clear all filters.</li>
+<li>Search <code>content = *INFO*</code> or use no content search.</li>
+<li>Check Log source / K8s / Host facets.</li>
+</ol></div>
+<div class="card item"><span class="badge b-workflow">Workflow</span><h3>Timeout</h3>
+<ol>
+<li><code>content = *timeout*</code></li>
+<li><code>content = *504*</code></li>
+<li><code>content = *Read timed out*</code></li>
+<li>Check slow spans in Distributed Tracing.</li>
+</ol></div>
+<div class="card item"><span class="badge b-workflow">Workflow</span><h3>Kubernetes crash</h3>
+<ol>
+<li><code>content = *CrashLoopBackOff*</code></li>
+<li><code>content = *OOMKilled*</code></li>
+<li>Filter by pod or namespace.</li>
+<li>Open Kubernetes → Workloads → Events.</li>
+</ol></div>
+</div>
+</section>
+
+<section id="patterns" class="item">
+<h2>Reusable Patterns</h2>
+<div class="tip success">
+<b>Best normal Logs filter bar pattern:</b><br>
+<code>content = *keyword*</code>
+</div>
+<div class="tip">
+<b>Best DQL pattern:</b><br>
+<code>fetch logs | filter matchesPhrase(content, "keyword") | sort timestamp desc</code>
+</div>
+<div class="tip warning">
+<b>Do not quote an entire OR expression as text:</b><br>
+Bad: <code>content = *"500 OR 501 OR 502"*</code><br>
+Better: use one search at a time in the filter bar, or use DQL with multiple <code>or</code> conditions.
+</div>
+</section>
+
+</main>
+</div>
+
+<div class="footer">Dynatrace master cheat sheet for filter bar + DQL/Grail troubleshooting.</div>
+
+<script>
+document.querySelectorAll("button.copy").forEach(btn=>{
+  btn.addEventListener("click", async ()=>{
+    const text = btn.parentElement.querySelector("pre").innerText;
+    try{
+      await navigator.clipboard.writeText(text);
+      const old = btn.innerText;
+      btn.innerText = "Copied";
+      setTimeout(()=>btn.innerText=old, 900);
+    }catch(e){
+      alert("Copy failed. Select the text manually.");
+    }
+  });
+});
+const search = document.getElementById("search");
+search.addEventListener("input", ()=>{
+  const q = search.value.toLowerCase().trim();
+  document.querySelectorAll(".item").forEach(el=>{
+    if(!q){el.style.display=""; return}
+    el.style.display = el.innerText.toLowerCase().includes(q) ? "" : "none";
+  });
+});
+</script>
+</body>
+</html>
