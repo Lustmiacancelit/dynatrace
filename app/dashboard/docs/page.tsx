@@ -23,7 +23,7 @@ export default function DocsPage() {
         <iframe
           title="DQL cheat sheet"
           srcDoc={html}
-          className="h-[calc(100vh-150px)] w-full rounded-2xl border border-white/10 bg-white"
+          className="h-[calc(100vh-150px)] w-full border-0 bg-transparent"
         />
       </main>
     </div>

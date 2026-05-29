@@ -6,52 +6,53 @@
 <title>Dynatrace DQL & Logs Master Cheat Sheet</title>
 <style>
 :root{
-  --bg:#070b14; --panel:#111827; --panel2:#0b1220; --code:#020617;
-  --border:#334155; --text:#f8fafc; --muted:#a8b3c7;
+  --bg:#070b14; --panel:transparent; --panel2:#0b1220; --code:#020617;
+  --border:rgba(148,163,184,.22); --text:#f8fafc; --muted:#a8b3c7;
   --cyan:#22d3ee; --purple:#8b5cf6; --green:#22c55e; --orange:#f59e0b; --red:#ef4444; --blue:#60a5fa;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;line-height:1.55}
-header{position:sticky;top:0;z-index:30;background:#050914;border-bottom:1px solid var(--border);padding:18px}
+header{position:sticky;top:0;z-index:30;background:rgba(5,9,20,.94);border-bottom:1px solid rgba(148,163,184,.16);padding:18px 0}
 h1{margin:0 0 8px;font-size:28px}
 .subtitle{margin:0 0 14px;color:var(--muted)}
-.search{width:100%;padding:14px 16px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:16px}
-.layout{display:grid;grid-template-columns:290px 1fr;gap:20px;padding:24px}
-nav{position:sticky;top:128px;height:calc(100vh - 150px);overflow:auto;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
-nav a{display:block;color:#dbeafe;text-decoration:none;padding:8px 10px;border-radius:8px;font-size:14px}
-nav a:hover{background:#1f2937}
+.search{width:100%;padding:14px 0;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font-size:16px;outline:none}
+.search:focus{border-color:var(--cyan)}
+.layout{display:grid;grid-template-columns:290px 1fr;gap:34px;padding:24px 0}
+nav{position:sticky;top:128px;height:calc(100vh - 150px);overflow:auto;background:transparent;border:0;border-right:1px solid rgba(148,163,184,.18);border-radius:0;padding:0 18px 0 0}
+nav a{display:block;color:#dbeafe;text-decoration:none;padding:8px 0;border-radius:0;font-size:14px}
+nav a:hover{background:transparent;color:var(--cyan)}
 main{max-width:1650px}
 section{margin-bottom:34px}
 h2{border-left:5px solid var(--purple);padding-left:12px;margin:0 0 14px;font-size:25px}
 h3{margin:6px 0 8px;font-size:18px}
 p{color:var(--muted);margin:6px 0 12px}
 ul,ol{color:#cbd5e1}
-code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:2px 6px;color:#e0f2fe}
-.tip{background:#172554;border-left:5px solid var(--cyan);padding:14px;border-radius:8px;margin-bottom:18px}
-.warning{border-left-color:var(--orange);background:#1c1917}
-.danger{border-left-color:var(--red);background:#1f1111}
-.success{border-left-color:var(--green);background:#0d1f14}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:16px}
-.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
-.badge{display:inline-block;border-radius:999px;padding:4px 10px;font-size:12px;margin-bottom:8px;font-weight:bold}
-.b-content{background:#064e3b;color:#bbf7d0}
-.b-status{background:#7f1d1d;color:#fecaca}
-.b-dql{background:#7c2d12;color:#fed7aa}
-.b-field{background:#1e3a8a;color:#bfdbfe}
-.b-workflow{background:#3b0764;color:#e9d5ff}
-.b-func{background:#312e81;color:#ddd6fe}
+code{background:transparent;border:0;border-bottom:1px solid rgba(96,165,250,.35);border-radius:0;padding:1px 2px;color:#e0f2fe}
+.tip{background:transparent;border-left:3px solid var(--cyan);padding:4px 0 4px 14px;border-radius:0;margin-bottom:18px}
+.warning{border-left-color:var(--orange);background:transparent}
+.danger{border-left-color:var(--red);background:transparent}
+.success{border-left-color:var(--green);background:transparent}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));column-gap:34px;row-gap:24px}
+.card{background:transparent;border:0;border-top:1px solid rgba(148,163,184,.16);border-radius:0;padding:16px 0 0}
+.badge{display:inline-block;border-radius:0;padding:0;font-size:12px;margin-bottom:8px;font-weight:bold;text-transform:uppercase;letter-spacing:.08em}
+.b-content{background:transparent;color:#86efac}
+.b-status{background:transparent;color:#fca5a5}
+.b-dql{background:transparent;color:#fdba74}
+.b-field{background:transparent;color:#93c5fd}
+.b-workflow{background:transparent;color:#d8b4fe}
+.b-func{background:transparent;color:#c4b5fd}
 .where{font-size:13px;color:#c4b5fd;margin:8px 0;font-weight:bold}
 .codewrap{position:relative}
-pre{white-space:pre-wrap;word-break:break-word;background:var(--code);border:1px solid var(--border);border-radius:10px;padding:14px 78px 14px 14px;min-height:46px;color:#f8fafc;font-weight:700;overflow:auto}
-button.copy{position:absolute;top:8px;right:8px;background:#334155;color:#fff;border:0;border-radius:8px;padding:8px 10px;cursor:pointer}
-button.copy:hover{background:#475569}
-.table{width:100%;border-collapse:collapse;margin:12px 0;background:var(--panel);border-radius:10px;overflow:hidden}
-.table th,.table td{border:1px solid var(--border);padding:10px;text-align:left;vertical-align:top}
-.table th{background:#1e293b}
-.stepbox{background:#0f172a;border:1px dashed #475569;border-radius:10px;padding:12px 14px;margin:12px 0}
+pre{white-space:pre-wrap;word-break:break-word;background:rgba(2,6,23,.46);border:0;border-left:2px solid rgba(96,165,250,.45);border-radius:0;padding:14px 78px 14px 14px;min-height:46px;color:#f8fafc;font-weight:700;overflow:auto}
+button.copy{position:absolute;top:8px;right:0;background:transparent;color:#bfdbfe;border:0;border-radius:0;padding:8px 0;cursor:pointer}
+button.copy:hover{color:#fff;background:transparent}
+.table{width:100%;border-collapse:collapse;margin:12px 0;background:transparent;border-radius:0;overflow:visible}
+.table th,.table td{border:0;border-bottom:1px solid rgba(148,163,184,.16);padding:10px 10px 10px 0;text-align:left;vertical-align:top}
+.table th{background:transparent;color:#e2e8f0}
+.stepbox{background:transparent;border:0;border-left:2px dashed #475569;border-radius:0;padding:4px 0 4px 14px;margin:12px 0}
 .stepbox b{color:#67e8f9}
-.small{font-size:13px}.footer{color:#94a3b8;padding:20px;text-align:center;border-top:1px solid var(--border)}
+.small{font-size:13px}.footer{color:#94a3b8;padding:20px;text-align:center;border-top:1px solid rgba(148,163,184,.16)}
 @media(max-width:950px){.layout{grid-template-columns:1fr}nav{position:relative;top:0;height:auto}}
 </style>
 </head>
