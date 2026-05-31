@@ -78,11 +78,24 @@ export default function DQLEditor({
       {/* Action buttons */}
       <div className="flex gap-2 px-4 py-3 border-t border-[#1e2d3d] bg-[#0a0e14]">
         <button
-          onClick={handleOpenInDynatrace}
-          disabled={!value.trim()}
+          onClick={onRun}
+          disabled={isRunning || !value.trim()}
           className="flex items-center gap-2 px-4 py-1.5 bg-[#238636] hover:bg-[#2ea043] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-mono rounded-lg transition-colors"
         >
-          ▶ Run in Dynatrace
+          {isRunning ? (
+            <>
+              <span className="animate-spin text-xs">○</span> Running...
+            </>
+          ) : (
+            <>▶ Run in FlowLog</>
+          )}
+        </button>
+        <button
+          onClick={handleOpenInDynatrace}
+          disabled={!value.trim()}
+          className="flex items-center gap-2 px-4 py-1.5 border border-[#30363d] hover:border-[#238636] hover:text-[#7ee787] disabled:opacity-40 disabled:cursor-not-allowed text-[#8b949e] text-sm font-mono rounded-lg transition-colors"
+        >
+          Open in Dynatrace
         </button>
         <button
           onClick={onExplain}

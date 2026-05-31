@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from "react";
 import DQLEditor from "./DQLEditor";
 import ExplanationPanel from "./ExplanationPanel";
+import ResultsTable from "./ResultsTable";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -19,6 +20,8 @@ interface Message {
   dqlSource?: "dynatrace" | "claude";
   explanation?: string;
   explanationSource?: "dynatrace" | "claude";
+  results?: Record<string, unknown> | null;
+  resultsError?: string;
   isError?: boolean;
   collapsed?: boolean;
 }
@@ -38,6 +41,7 @@ export default function DQLChat() {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [explainingId, setExplainingId] = useState<string | null>(null);
+  const [runningId, setRunningId] = useState<string | null>(null);
   const [pendingImage, setPendingImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -179,6 +183,43 @@ export default function DQLChat() {
     }
   };
 
+  const handleRun = async (id: string, query: string) => {
+    setRunningId(id);
+    setMessages((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, results: null, resultsError: undefined } : m))
+    );
+
+    try {
+      const res = await fetch("/api/dql-execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, timeframeStart: "now-2h", timeframeEnd: "now" }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === id ? { ...m, results: null, resultsError: data.error || "DQL execution failed." } : m
+          )
+        );
+        return;
+      }
+
+      setMessages((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, results: data.results, resultsError: undefined } : m))
+      );
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === id ? { ...m, results: null, resultsError: "Failed to execute DQL in FlowLog." } : m
+        )
+      );
+    } finally {
+      setRunningId(null);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -306,9 +347,9 @@ export default function DQLChat() {
                   <DQLEditor
                     value={msg.dql}
                     onChange={(val) => handleDqlChange(msg.id, val)}
-                    onRun={() => {}}
+                    onRun={() => handleRun(msg.id, msg.dql!)}
                     onExplain={() => handleExplain(msg.id, msg.dql!)}
-                    isRunning={false}
+                    isRunning={runningId === msg.id}
                     isExplaining={explainingId === msg.id}
                     source={msg.dqlSource}
                   />
@@ -316,6 +357,10 @@ export default function DQLChat() {
               )}
 
               {/* Explanation — collapsible */}
+              {(msg.results || msg.resultsError) && (
+                <ResultsTable results={msg.results ?? null} error={msg.resultsError} />
+              )}
+
               {msg.explanation && (
                 <ExplanationPanel explanation={msg.explanation} source={msg.explanationSource} />
               )}

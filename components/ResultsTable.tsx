@@ -10,6 +10,20 @@ function flattenResults(results: Record<string, unknown>): {
   columns: string[];
   rows: Record<string, unknown>[];
 } {
+  const grailRecords =
+    (results.records as Record<string, unknown>[] | undefined) ??
+    ((results.result as { records?: Record<string, unknown>[] } | undefined)?.records);
+  if (Array.isArray(grailRecords)) {
+    if (!grailRecords.length) return { columns: [], rows: [] };
+    const columns = Array.from(
+      grailRecords.reduce((set, row) => {
+        Object.keys(row).forEach((key) => set.add(key));
+        return set;
+      }, new Set<string>())
+    );
+    return { columns, rows: grailRecords };
+  }
+
   // Handle Dynatrace metrics response shape
   if (results?.resolution && results?.result) {
     const metricResults = results.result as Array<{

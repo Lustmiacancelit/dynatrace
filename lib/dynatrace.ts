@@ -1,5 +1,6 @@
 const DT_URL = process.env.DYNATRACE_ENV_URL;
 const DT_TOKEN = process.env.DYNATRACE_TOKEN;
+const DT_PLATFORM_TOKEN = process.env.DYNATRACE_PLATFORM_TOKEN;
 
 if (!DT_URL || !DT_TOKEN) {
   console.warn("⚠️  DYNATRACE_ENV_URL or DYNATRACE_TOKEN not set in .env.local");
@@ -80,6 +81,17 @@ export type EntitiesResponse = {
   entities: Entity[];
 };
 
+export type DqlExecuteResponse = {
+  records?: Record<string, unknown>[];
+  result?: {
+    records?: Record<string, unknown>[];
+    [key: string]: unknown;
+  };
+  state?: string;
+  requestToken?: string;
+  [key: string]: unknown;
+};
+
 // ─── v2 API helpers ────────────────────────────────────────────────────────
 
 export const getMetrics = (
@@ -114,14 +126,42 @@ export async function executeDql(
   query: string,
   timeframeStart = "now-2h",
   timeframeEnd = "now"
-) {
+): Promise<DqlExecuteResponse> {
+  if (!DT_PLATFORM_TOKEN) {
+    throw new Error(
+      "FlowLog can run this inside the app after you add DYNATRACE_PLATFORM_TOKEN with Grail DQL permissions. The current classic token can read metrics/entities/problems, but it cannot execute Grail DQL or read logs."
+    );
+  }
+
+  const environmentId = DT_URL?.replace(/^https:\/\//, "").replace(/\.live\.dynatrace\.com$/, "");
+  if (!environmentId) throw new Error("DYNATRACE_ENV_URL is not configured.");
+
   const res = await fetch(
-    `${DT_URL}/api/v2/logs/search?from=${encodeURIComponent(timeframeStart)}&to=${encodeURIComponent(timeframeEnd)}&query=${encodeURIComponent(query)}&limit=100`,
-    { method: "GET", headers: dtHeaders }
+    `https://${environmentId}.apps.dynatrace.com/platform/storage/query/v1/query:execute?request-timeout=30s&enrich=metric-metadata`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${DT_PLATFORM_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        defaultTimeframeStart: timeframeStart,
+        defaultTimeframeEnd: timeframeEnd,
+        fetchTimeoutSeconds: 30,
+        requestTimeoutMilliseconds: 30000,
+        maxResultRecords: 1000,
+      }),
+    }
   );
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`DQL execution failed (${res.status}): ${err}`);
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(
+        `Dynatrace rejected the in-app DQL execution (${res.status}). Add a Dynatrace Platform/OAuth bearer token with Grail permissions such as storage:buckets:read and storage:logs:read. Details: ${err}`
+      );
+    }
+    throw new Error(`Dynatrace DQL execution failed (${res.status}): ${err}`);
   }
   return res.json();
 }

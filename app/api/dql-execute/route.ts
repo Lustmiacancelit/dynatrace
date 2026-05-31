@@ -1,8 +1,11 @@
 // app/api/dql-execute/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
 import { executeDql } from "@/lib/dynatrace";
 
 export async function POST(req: NextRequest) {
+  if (!getSession()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { query, timeframeStart, timeframeEnd } = await req.json();
 
   if (!query?.trim()) {
