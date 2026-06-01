@@ -4,7 +4,7 @@ import { dqlToNl } from "@/lib/dynatrace";
 import { explainDqlWithClaude } from "@/lib/claude";
 
 export async function POST(req: NextRequest) {
-  const { query } = await req.json();
+  const { query, language = "en" } = await req.json();
 
   if (!query?.trim()) {
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   // Fall back to Claude
   try {
-    const explanation = await explainDqlWithClaude(query);
+    const explanation = await explainDqlWithClaude(query, language);
     return NextResponse.json({ explanation, source: "claude" });
   } catch (error) {
     return NextResponse.json(

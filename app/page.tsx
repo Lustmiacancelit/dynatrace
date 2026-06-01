@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AuthForms from "@/components/AuthForms";
+import { LanguageSwitcher } from "@/components/LanguageProvider";
 import { getSession } from "@/lib/auth";
 
 const FEATURES = [
@@ -25,6 +26,7 @@ export default function Home() {
               <h1 className="mt-1 text-lg font-semibold">Dynatrace DQL Builder</h1>
             </div>
             <div className="flex items-center gap-3 text-sm">
+              <LanguageSwitcher compact />
               {session ? (
                 <Link className="rounded-lg bg-white px-4 py-2 font-semibold text-[#081018] transition hover:bg-[#e6f15a]" href="/dashboard">
                   Open dashboard

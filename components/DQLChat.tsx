@@ -1,7 +1,7 @@
 "use client";
-// components/DQLChat.tsx
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 import DQLEditor from "./DQLEditor";
 import ExplanationPanel from "./ExplanationPanel";
 import ResultsTable from "./ResultsTable";
@@ -28,21 +28,26 @@ interface Message {
 
 const SUGGESTIONS = [
   "Show all error logs in the last hour",
+  "Mostrar todos los logs de error en la ultima hora",
+  "Mostrar todos os logs de erro na ultima hora",
   "Find the slowest services by response time",
   "Show HTTP 5xx errors grouped by service",
-  "CPU usage for all hosts in the last 30 minutes",
   "Kubernetes pod restarts in the last 24 hours",
-  "Show failed deployments today",
 ];
 
 export default function DQLChat() {
+  const { language, t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [explainingId, setExplainingId] = useState<string | null>(null);
   const [runningId, setRunningId] = useState<string | null>(null);
-  const [pendingImage, setPendingImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [pendingImage, setPendingImage] = useState<{
+    base64: string;
+    mediaType: string;
+    preview: string;
+  } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,42 +60,53 @@ export default function DQLChat() {
 
   const toggleCollapse = (id: string) => {
     setMessages((prev) =>
-      prev.map((m) => m.id === id ? { ...m, collapsed: !m.collapsed } : m)
+      prev.map((message) =>
+        message.id === id ? { ...message, collapsed: !message.collapsed } : message
+      )
     );
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      setPendingImage({ base64: result.split(",")[1], mediaType: file.type, preview: result });
+      setPendingImage({
+        base64: result.split(",")[1],
+        mediaType: file.type,
+        preview: result,
+      });
     };
     reader.readAsDataURL(file);
-    e.target.value = "";
+    event.target.value = "";
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
-    for (const item of Array.from(items)) {
-      if (item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        if (!file) continue;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          setPendingImage({ base64: result.split(",")[1], mediaType: item.type, preview: result });
-        };
-        reader.readAsDataURL(file);
-        break;
-      }
+  const handlePaste = (event: React.ClipboardEvent) => {
+    for (const item of Array.from(event.clipboardData.items)) {
+      if (!item.type.startsWith("image/")) continue;
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        setPendingImage({
+          base64: result.split(",")[1],
+          mediaType: item.type,
+          preview: result,
+        });
+      };
+      reader.readAsDataURL(file);
+      break;
     }
   };
 
   const handleSubmit = async (prompt: string) => {
-    const finalPrompt = prompt.trim() || (pendingImage ? "What DQL query should I use based on this screenshot?" : "");
-    if (!finalPrompt && !pendingImage || isGenerating) return;
+    const finalPrompt =
+      prompt.trim() || (pendingImage ? "What DQL query should I use based on this screenshot?" : "");
+    if ((!finalPrompt && !pendingImage) || isGenerating) return;
 
     const userMsg: Message = {
       id: generateId(),
@@ -105,47 +121,67 @@ export default function DQLChat() {
     setInput("");
     setIsGenerating(true);
 
-    let userContent: string | Array<{ type: string; [key: string]: unknown }> = finalPrompt;
+    let userContent: ChatMessage["content"] = finalPrompt;
     if (pendingImage) {
       userContent = [
-        { type: "image", source: { type: "base64", media_type: pendingImage.mediaType, data: pendingImage.base64 } },
+        {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: pendingImage.mediaType,
+            data: pendingImage.base64,
+          },
+        },
         { type: "text", text: finalPrompt },
       ];
     }
 
     const newHistory: ChatMessage[] = [...chatHistory, { role: "user", content: userContent }];
-    const imagePayload = pendingImage ? { base64: pendingImage.base64, mediaType: pendingImage.mediaType } : null;
+    const imagePayload = pendingImage
+      ? { base64: pendingImage.base64, mediaType: pendingImage.mediaType }
+      : null;
     setPendingImage(null);
 
     try {
       const res = await fetch("/api/dql-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: finalPrompt, history: newHistory, image: imagePayload }),
+        body: JSON.stringify({ prompt: finalPrompt, history: newHistory, image: imagePayload, language }),
       });
-
       const data = await res.json();
 
       if (data.error) {
         setMessages((prev) =>
-          prev.map((m) => m.id === assistantId ? { ...m, content: data.error, isError: true } : m)
-        );
-        setChatHistory([...newHistory, { role: "assistant", content: data.error }]);
-      } else {
-        const assistantReply = `Here's the DQL query:\n\`\`\`\n${data.dql}\n\`\`\``;
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, content: data.message || "Here's the DQL query for that:", dql: data.dql, dqlSource: data.source }
-              : m
+          prev.map((message) =>
+            message.id === assistantId
+              ? { ...message, content: data.error, isError: true }
+              : message
           )
         );
-        setChatHistory([...newHistory, { role: "assistant", content: assistantReply }]);
+        setChatHistory([...newHistory, { role: "assistant", content: data.error }]);
+        return;
       }
+
+      const assistantReply = `DQL query:\n\`\`\`\n${data.dql}\n\`\`\``;
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === assistantId
+            ? {
+                ...message,
+                content: data.message || "Here's the DQL query for that:",
+                dql: data.dql,
+                dqlSource: data.source,
+              }
+            : message
+        )
+      );
+      setChatHistory([...newHistory, { role: "assistant", content: assistantReply }]);
     } catch {
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId ? { ...m, content: "Network error. Please try again.", isError: true } : m
+        prev.map((message) =>
+          message.id === assistantId
+            ? { ...message, content: t("chat.networkError"), isError: true }
+            : message
         )
       );
     } finally {
@@ -154,29 +190,32 @@ export default function DQLChat() {
   };
 
   const handleDqlChange = (id: string, newDql: string) => {
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, dql: newDql } : m)));
+    setMessages((prev) => prev.map((message) => (message.id === id ? { ...message, dql: newDql } : message)));
   };
 
   const handleExplain = async (id: string, query: string) => {
     setExplainingId(id);
-    setMessages((prev) => prev.map((m) => m.id === id ? { ...m, explanation: undefined } : m));
+    setMessages((prev) => prev.map((message) => (message.id === id ? { ...message, explanation: undefined } : message)));
+
     try {
       const res = await fetch("/api/dql-explain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, language }),
       });
       const data = await res.json();
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === id
-            ? { ...m, explanation: data.explanation ?? data.error, explanationSource: data.source }
-            : m
+        prev.map((message) =>
+          message.id === id
+            ? { ...message, explanation: data.explanation ?? data.error, explanationSource: data.source }
+            : message
         )
       );
     } catch {
       setMessages((prev) =>
-        prev.map((m) => m.id === id ? { ...m, explanation: "Failed to explain query." } : m)
+        prev.map((message) =>
+          message.id === id ? { ...message, explanation: t("chat.explainError") } : message
+        )
       );
     } finally {
       setExplainingId(null);
@@ -186,7 +225,9 @@ export default function DQLChat() {
   const handleRun = async (id: string, query: string) => {
     setRunningId(id);
     setMessages((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, results: null, resultsError: undefined } : m))
+      prev.map((message) =>
+        message.id === id ? { ...message, results: null, resultsError: undefined } : message
+      )
     );
 
     try {
@@ -199,20 +240,24 @@ export default function DQLChat() {
 
       if (!res.ok || data.error) {
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === id ? { ...m, results: null, resultsError: data.error || "DQL execution failed." } : m
+          prev.map((message) =>
+            message.id === id
+              ? { ...message, results: null, resultsError: data.error || "DQL execution failed." }
+              : message
           )
         );
         return;
       }
 
       setMessages((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, results: data.results, resultsError: undefined } : m))
+        prev.map((message) =>
+          message.id === id ? { ...message, results: data.results, resultsError: undefined } : message
+        )
       );
     } catch {
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === id ? { ...m, results: null, resultsError: "Failed to execute DQL in FlowLog." } : m
+        prev.map((message) =>
+          message.id === id ? { ...message, results: null, resultsError: t("chat.runError") } : message
         )
       );
     } finally {
@@ -220,149 +265,140 @@ export default function DQLChat() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       handleSubmit(input);
     }
   };
 
   return (
     <div className="flex h-full flex-col bg-[#010409] text-[#e6edf3]">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-[#1e2d3d] bg-[#0a0e14]">
+      <header className="flex items-center justify-between border-b border-[#1e2d3d] bg-[#0a0e14] px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4aaeff] to-[#b060ff] flex items-center justify-center text-xs font-bold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#4aaeff] to-[#b060ff] text-xs font-bold">
             DQ
           </div>
           <div>
-            <h1 className="text-sm font-semibold tracking-tight">DQL Builder</h1>
-            <p className="text-[10px] text-[#8b949e] font-mono">dynatrace.flowlog.dev</p>
+            <h1 className="text-sm font-semibold tracking-tight">{t("chat.title")}</h1>
+            <p className="font-mono text-[10px] text-[#8b949e]">dynatrace.flowlog.dev</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           {messages.length > 0 && (
             <button
-              onClick={() => { setMessages([]); setChatHistory([]); }}
-              className="text-[11px] font-mono text-[#8b949e] hover:text-[#f85149] transition-colors"
+              onClick={() => {
+                setMessages([]);
+                setChatHistory([]);
+              }}
+              className="font-mono text-[11px] text-[#8b949e] transition-colors hover:text-[#f85149]"
             >
-              clear chat
+              {t("common.clearChat")}
             </button>
           )}
           <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#238636] animate-pulse" />
-            <span className="text-[11px] font-mono text-[#8b949e]">connected</span>
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#238636]" />
+            <span className="font-mono text-[11px] text-[#8b949e]">{t("common.connected")}</span>
           </div>
         </div>
       </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 w-full max-w-4xl mx-auto">
+      <div className="mx-auto flex-1 space-y-4 overflow-y-auto px-4 py-6 w-full max-w-4xl">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-8 py-16">
+          <div className="flex h-full flex-col items-center justify-center gap-8 py-16">
             <div className="text-center">
-              <div className="text-4xl mb-4">⬡</div>
-              <h2 className="text-xl font-semibold text-[#e6edf3] mb-2">Ask in plain English</h2>
-              <p className="text-sm text-[#8b949e] max-w-sm">
-                Describe what you need, paste a screenshot, or upload an image of your Dynatrace logs.
-              </p>
+              <div className="mb-4 text-4xl">DQL</div>
+              <h2 className="mb-2 text-xl font-semibold text-[#e6edf3]">{t("chat.emptyTitle")}</h2>
+              <p className="max-w-sm text-sm text-[#8b949e]">{t("chat.emptyBody")}</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-xl">
-              {SUGGESTIONS.map((s) => (
+            <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+              {SUGGESTIONS.map((suggestion) => (
                 <button
-                  key={s}
-                  onClick={() => handleSubmit(s)}
-                  className="text-left text-xs font-mono px-3 py-2.5 rounded-lg border border-[#1e2d3d] bg-[#0d1117] hover:border-[#4aaeff]/50 hover:text-[#4aaeff] text-[#8b949e] transition-all"
+                  key={suggestion}
+                  onClick={() => handleSubmit(suggestion)}
+                  className="rounded-lg border border-[#1e2d3d] bg-[#0d1117] px-3 py-2.5 text-left font-mono text-xs text-[#8b949e] transition-all hover:border-[#4aaeff]/50 hover:text-[#4aaeff]"
                 >
-                  {s}
+                  {suggestion}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {messages.map((msg) => (
-          <div key={msg.id} className="flex gap-3 items-start">
-            {/* Avatar */}
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 mt-1 ${
-              msg.role === "assistant"
-                ? "bg-gradient-to-br from-[#4aaeff] to-[#b060ff]"
-                : "bg-[#1f6feb]"
-            }`}>
-              {msg.role === "assistant" ? "DQ" : "U"}
+        {messages.map((message) => (
+          <div key={message.id} className="flex items-start gap-3">
+            <div
+              className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${
+                message.role === "assistant"
+                  ? "bg-gradient-to-br from-[#4aaeff] to-[#b060ff]"
+                  : "bg-[#1f6feb]"
+              }`}
+            >
+              {message.role === "assistant" ? "DQ" : "U"}
             </div>
 
-            {/* Content */}
-            <div className="flex flex-col gap-3 flex-1 min-w-0">
-
-              {/* Screenshot preview */}
-              {msg.imagePreview && (
-                <div className="rounded-xl overflow-hidden border border-[#1e2d3d] max-w-sm">
-                  <img src={msg.imagePreview} alt="Screenshot" className="w-full h-auto" />
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
+              {message.imagePreview && (
+                <div className="max-w-sm overflow-hidden rounded-xl border border-[#1e2d3d]">
+                  <img src={message.imagePreview} alt="Screenshot" className="h-auto w-full" />
                 </div>
               )}
 
-              {/* Message bubble — collapsible for user messages with long content */}
-              <div className={`rounded-xl border text-sm leading-relaxed overflow-hidden ${
-                msg.isError
-                  ? "border-[#f85149]/40 bg-[#1a0a0a]"
-                  : msg.role === "user"
-                  ? "border-[#1f6feb]/30 bg-[#1f2d4a]"
-                  : "border-[#1e2d3d] bg-[#161b22]"
-              }`}>
-                {/* Collapse header for long user messages */}
-                {msg.role === "user" && msg.content.length > 120 ? (
+              <div
+                className={`overflow-hidden rounded-xl border text-sm leading-relaxed ${
+                  message.isError
+                    ? "border-[#f85149]/40 bg-[#1a0a0a]"
+                    : message.role === "user"
+                      ? "border-[#1f6feb]/30 bg-[#1f2d4a]"
+                      : "border-[#1e2d3d] bg-[#161b22]"
+                }`}
+              >
+                {message.role === "user" && message.content.length > 120 ? (
                   <>
                     <div
-                      className="flex items-center justify-between px-4 py-2 cursor-pointer select-none border-b border-[#1f6feb]/20"
-                      onClick={() => toggleCollapse(msg.id)}
+                      className="flex cursor-pointer select-none items-center justify-between border-b border-[#1f6feb]/20 px-4 py-2"
+                      onClick={() => toggleCollapse(message.id)}
                     >
-                      <span className="text-xs font-mono text-[#4aaeff] opacity-70">
-                        {msg.collapsed ? "▶ Show message" : "▼ Hide message"}
+                      <span className="font-mono text-xs text-[#4aaeff] opacity-70">
+                        {message.collapsed ? `> ${t("chat.showMessage")}` : `v ${t("chat.hideMessage")}`}
                       </span>
                       <span className="text-[10px] text-[#8b949e]">
-                        {msg.collapsed ? msg.content.slice(0, 60) + "..." : ""}
+                        {message.collapsed ? `${message.content.slice(0, 60)}...` : ""}
                       </span>
                     </div>
-                    {!msg.collapsed && (
-                      <div className="px-4 py-3 text-[#e6edf3] whitespace-pre-wrap">{msg.content}</div>
+                    {!message.collapsed && (
+                      <div className="whitespace-pre-wrap px-4 py-3 text-[#e6edf3]">{message.content}</div>
                     )}
                   </>
                 ) : (
-                  <div className={`px-4 py-3 ${msg.isError ? "text-[#f85149]" : "text-[#e6edf3]"} whitespace-pre-wrap`}>
-                    {msg.content || (
-                      <span className="flex gap-1 items-center text-[#8b949e]">
-                        <span className="animate-bounce" style={{animationDelay:"0ms"}}>·</span>
-                        <span className="animate-bounce" style={{animationDelay:"100ms"}}>·</span>
-                        <span className="animate-bounce" style={{animationDelay:"200ms"}}>·</span>
-                      </span>
-                    )}
+                  <div
+                    className={`whitespace-pre-wrap px-4 py-3 ${
+                      message.isError ? "text-[#f85149]" : "text-[#e6edf3]"
+                    }`}
+                  >
+                    {message.content || <span className="text-[#8b949e]">...</span>}
                   </div>
                 )}
               </div>
 
-              {/* DQL Editor — collapsible */}
-              {msg.dql !== undefined && (
-                <div>
-                  <DQLEditor
-                    value={msg.dql}
-                    onChange={(val) => handleDqlChange(msg.id, val)}
-                    onRun={() => handleRun(msg.id, msg.dql!)}
-                    onExplain={() => handleExplain(msg.id, msg.dql!)}
-                    isRunning={runningId === msg.id}
-                    isExplaining={explainingId === msg.id}
-                    source={msg.dqlSource}
-                  />
-                </div>
+              {message.dql !== undefined && (
+                <DQLEditor
+                  value={message.dql}
+                  onChange={(value) => handleDqlChange(message.id, value)}
+                  onRun={() => handleRun(message.id, message.dql!)}
+                  onExplain={() => handleExplain(message.id, message.dql!)}
+                  isRunning={runningId === message.id}
+                  isExplaining={explainingId === message.id}
+                  source={message.dqlSource}
+                />
               )}
 
-              {/* Explanation — collapsible */}
-              {(msg.results || msg.resultsError) && (
-                <ResultsTable results={msg.results ?? null} error={msg.resultsError} />
+              {(message.results || message.resultsError) && (
+                <ResultsTable results={message.results ?? null} error={message.resultsError} />
               )}
 
-              {msg.explanation && (
-                <ExplanationPanel explanation={msg.explanation} source={msg.explanationSource} />
+              {message.explanation && (
+                <ExplanationPanel explanation={message.explanation} source={message.explanationSource} />
               )}
             </div>
           </div>
@@ -370,54 +406,55 @@ export default function DQLChat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Pending image preview */}
       {pendingImage && (
-        <div className="px-4 pb-2 max-w-4xl mx-auto w-full">
-          <div className="flex items-center gap-3 bg-[#0d1117] border border-[#1e2d3d] rounded-lg px-3 py-2">
-            <img src={pendingImage.preview} alt="Pending" className="w-12 h-12 object-cover rounded" />
-            <span className="text-xs text-[#8b949e] font-mono flex-1">Screenshot ready — add a message or just send</span>
-            <button onClick={() => setPendingImage(null)} className="text-[#8b949e] hover:text-[#f85149] transition-colors text-sm">✕</button>
+        <div className="mx-auto w-full max-w-4xl px-4 pb-2">
+          <div className="flex items-center gap-3 rounded-lg border border-[#1e2d3d] bg-[#0d1117] px-3 py-2">
+            <img src={pendingImage.preview} alt="Pending" className="h-12 w-12 rounded object-cover" />
+            <span className="flex-1 font-mono text-xs text-[#8b949e]">{t("chat.screenshotReady")}</span>
+            <button
+              onClick={() => setPendingImage(null)}
+              className="text-sm text-[#8b949e] transition-colors hover:text-[#f85149]"
+            >
+              x
+            </button>
           </div>
         </div>
       )}
 
-      {/* Input */}
-      <div className="px-4 py-4 border-t border-[#1e2d3d] bg-[#0a0e14]">
-        <div className="max-w-4xl mx-auto">
+      <div className="border-t border-[#1e2d3d] bg-[#0a0e14] px-4 py-4">
+        <div className="mx-auto max-w-4xl">
           <div
-            className="flex gap-2 items-end rounded-xl border border-[#1e2d3d] bg-[#0d1117] focus-within:border-[#4aaeff]/50 transition-colors px-4 py-3"
+            className="flex items-end gap-2 rounded-xl border border-[#1e2d3d] bg-[#0d1117] px-4 py-3 transition-colors focus-within:border-[#4aaeff]/50"
             onPaste={handlePaste}
           >
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 w-7 h-7 rounded-lg border border-[#1e2d3d] hover:border-[#4aaeff]/50 hover:text-[#4aaeff] text-[#8b949e] flex items-center justify-center transition-colors"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#1e2d3d] text-[#8b949e] transition-colors hover:border-[#4aaeff]/50 hover:text-[#4aaeff]"
               title="Upload screenshot"
             >
-              📎
+              +
             </button>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
 
             <textarea
               ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              placeholder="Describe what you need, or paste/upload a screenshot..."
-              className="flex-1 bg-transparent text-sm text-[#e6edf3] placeholder-[#8b949e] outline-none resize-none font-mono leading-relaxed"
+              placeholder={t("chat.inputPlaceholder")}
+              className="flex-1 resize-none bg-transparent font-mono text-sm leading-relaxed text-[#e6edf3] outline-none placeholder:text-[#8b949e]"
               style={{ maxHeight: "120px" }}
             />
             <button
               onClick={() => handleSubmit(input)}
               disabled={(!input.trim() && !pendingImage) || isGenerating}
-              className="shrink-0 w-8 h-8 rounded-lg bg-[#1f6feb] hover:bg-[#388bfd] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1f6feb] transition-colors hover:bg-[#388bfd] disabled:cursor-not-allowed disabled:opacity-30"
             >
-              {isGenerating ? <span className="animate-spin text-xs">◌</span> : <span className="text-xs">↑</span>}
+              {isGenerating ? <span className="animate-spin text-xs">o</span> : <span className="text-xs">^</span>}
             </button>
           </div>
-          <p className="text-[10px] text-[#8b949e] text-center mt-2 font-mono">
-            Enter to send · Shift+Enter for new line · Paste or upload screenshots · Claude remembers context
-          </p>
+          <p className="mt-2 text-center font-mono text-[10px] text-[#8b949e]">{t("chat.inputHelp")}</p>
         </div>
       </div>
     </div>

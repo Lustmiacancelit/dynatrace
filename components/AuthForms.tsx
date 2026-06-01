@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Mode = "register" | "login";
 
 export default function AuthForms({ initialMode = "register" }: { initialMode?: Mode }) {
+  const { t } = useLanguage();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -67,14 +69,14 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
           onClick={() => setMode("register")}
           className={`border-b-2 px-0 pb-3 transition ${mode === "register" ? "border-[#e6f15a] text-[#e6f15a]" : "border-transparent text-slate-400 hover:text-white"}`}
         >
-          Request access
+          {t("auth.requestAccess")}
         </button>
         <button
           type="button"
           onClick={() => setMode("login")}
           className={`border-b-2 px-0 pb-3 transition ${mode === "login" ? "border-[#e6f15a] text-[#e6f15a]" : "border-transparent text-slate-400 hover:text-white"}`}
         >
-          Log in
+          {t("auth.login")}
         </button>
       </div>
 
@@ -92,7 +94,7 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
         {mode === "register" && (
           <>
             <label className="block text-sm text-slate-300">
-              Name
+              {t("auth.name")}
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -101,7 +103,7 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
               />
             </label>
             <label className="block text-sm text-slate-300">
-              Company
+              {t("auth.company")}
               <input
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
@@ -112,7 +114,7 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
         )}
 
         <label className="block text-sm text-slate-300">
-          Email
+          {t("auth.email")}
           <input
             type="email"
             value={email}
@@ -124,12 +126,12 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
 
         {mode === "login" && (
           <label className="block text-sm text-slate-300">
-            Admin password
+            {t("auth.adminPassword")}
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Only required for admins"
+              placeholder={t("auth.adminPasswordPlaceholder")}
               className="mt-2 w-full border-0 border-b border-white/15 bg-transparent px-0 py-2.5 text-white outline-none transition placeholder:text-slate-600 focus:border-[#e6f15a]"
             />
           </label>
@@ -142,12 +144,12 @@ export default function AuthForms({ initialMode = "register" }: { initialMode?: 
           disabled={isLoading}
           className="mt-2 w-full rounded-full bg-[#e6f15a] px-4 py-3 font-semibold text-[#0b1117] transition hover:bg-[#f2ff75] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading ? "Working..." : mode === "register" ? "Send request" : "Continue"}
+          {isLoading ? t("common.loading") : mode === "register" ? t("auth.sendRequest") : t("common.continue")}
         </button>
 
         {mode === "login" && (
           <p className="text-xs leading-5 text-slate-400">
-            Approved customers sign in from the email link sent after approval. Admins can use the shared admin password.
+            {t("auth.loginHelp")}
           </p>
         )}
       </form>

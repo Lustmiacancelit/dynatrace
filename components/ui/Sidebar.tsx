@@ -11,18 +11,20 @@ import {
   BookOpen,
   ShieldAlert,
 } from "lucide-react";
+import { useLanguage } from "@/components/LanguageProvider";
 
 const NAV = [
-  { href: "/dashboard", label: "Overview", icon: Activity, exact: true },
-  { href: "/dashboard/metrics", label: "Metrics", icon: BarChart2 },
-  { href: "/dashboard/logs", label: "Logs", icon: FileText },
-  { href: "/dashboard/problems", label: "Problems", icon: AlertTriangle },
-  { href: "/dashboard/builder", label: "DQL Builder", icon: Terminal },
-  { href: "/dashboard/docs", label: "Docs", icon: BookOpen },
+  { href: "/dashboard", labelKey: "nav.overview", icon: Activity, exact: true },
+  { href: "/dashboard/metrics", labelKey: "nav.metrics", icon: BarChart2 },
+  { href: "/dashboard/logs", labelKey: "nav.logs", icon: FileText },
+  { href: "/dashboard/problems", labelKey: "nav.problems", icon: AlertTriangle },
+  { href: "/dashboard/builder", labelKey: "nav.builder", icon: Terminal },
+  { href: "/dashboard/docs", labelKey: "nav.docs", icon: BookOpen },
 ];
 
 export default function Sidebar({ role }: { role: "admin" | "user" }) {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   function isActive(href: string, exact?: boolean) {
     return exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
@@ -35,11 +37,11 @@ export default function Sidebar({ role }: { role: "admin" | "user" }) {
           <Activity className="h-5 w-5 text-[#6366f1]" />
           <span className="font-semibold text-white">FlowLog</span>
         </div>
-        <p className="mt-0.5 text-xs text-slate-500">Observability</p>
+        <p className="mt-0.5 text-xs text-slate-500">{t("brand.observability")}</p>
       </div>
 
       <nav className="flex-1 space-y-0.5 p-3">
-        {NAV.map(({ href, label, icon: Icon, exact }) => (
+        {NAV.map(({ href, labelKey, icon: Icon, exact }) => (
           <Link
             key={href}
             href={href}
@@ -50,7 +52,7 @@ export default function Sidebar({ role }: { role: "admin" | "user" }) {
             }`}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            {label}
+            {t(labelKey)}
           </Link>
         ))}
         {role === "admin" && (
@@ -63,7 +65,7 @@ export default function Sidebar({ role }: { role: "admin" | "user" }) {
             }`}
           >
             <ShieldAlert className="h-4 w-4 flex-shrink-0" />
-            Admin
+            {t("nav.admin")}
           </Link>
         )}
       </nav>

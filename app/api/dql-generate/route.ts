@@ -4,7 +4,7 @@ import { nlToDql } from "@/lib/dynatrace";
 import { generateDqlWithClaude } from "@/lib/claude";
 
 export async function POST(req: NextRequest) {
-  const { prompt, history = [], image = null } = await req.json();
+  const { prompt, history = [], image = null, language = "en" } = await req.json();
 
   if (!prompt?.trim() && !image) {
     return NextResponse.json({ error: "Prompt or image is required" }, { status: 400 });
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
   // Claude with cleaned history + optional image
   try {
-    const result = await generateDqlWithClaude(prompt, cleanHistory, image);
+    const result = await generateDqlWithClaude(prompt, cleanHistory, image, language);
     return NextResponse.json({ dql: result.dql, message: result.message, source: "claude" });
   } catch (claudeError) {
     return NextResponse.json({ error: String(claudeError) }, { status: 500 });

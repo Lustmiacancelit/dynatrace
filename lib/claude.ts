@@ -62,6 +62,13 @@ interface ImageInput {
 }
 
 type ValidMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+type SupportedLanguage = "en" | "es" | "pt";
+
+const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
+  en: "English",
+  es: "Spanish",
+  pt: "Portuguese",
+};
 
 function normalizeMediaType(mediaType: string): ValidMediaType {
   const valid: ValidMediaType[] = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -78,7 +85,8 @@ function normalizeMediaType(mediaType: string): ValidMediaType {
 export async function generateDqlWithClaude(
   prompt: string,
   history: ChatMessage[] = [],
-  image: ImageInput | null = null
+  image: ImageInput | null = null,
+  language: SupportedLanguage = "en"
 ): Promise<{ dql: string; message: string }> {
 
   let currentContent: MessageParam["content"];
@@ -107,7 +115,13 @@ export async function generateDqlWithClaude(
   const response = await client.messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 1024,
-    system: DQL_SYSTEM_PROMPT,
+    system: `${DQL_SYSTEM_PROMPT}
+
+LANGUAGE:
+- The user may write in English, Spanish, or Portuguese.
+- Understand the user's natural-language request regardless of those languages.
+- Return the JSON message field in ${LANGUAGE_NAMES[language] ?? "English"}.
+- The dql field must always remain valid Dynatrace DQL syntax and should not be translated.`,
     messages,
   });
 
@@ -128,14 +142,17 @@ export async function generateDqlWithClaude(
   }
 }
 
-export async function explainDqlWithClaude(dqlQuery: string): Promise<string> {
+export async function explainDqlWithClaude(
+  dqlQuery: string,
+  language: SupportedLanguage = "en"
+): Promise<string> {
   const message = await client.messages.create({
     model: "claude-sonnet-4-5",
     max_tokens: 512,
     messages: [
       {
         role: "user",
-        content: `Explain this Dynatrace DQL query in plain English. Be concise (2-3 sentences max). What data does it fetch and what does it show?\n\nQuery:\n${dqlQuery}`,
+        content: `Explain this Dynatrace DQL query in ${LANGUAGE_NAMES[language] ?? "English"}. Be concise (2-3 sentences max). What data does it fetch and what does it show?\n\nQuery:\n${dqlQuery}`,
       },
     ],
   });
