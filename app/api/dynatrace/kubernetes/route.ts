@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth";
 import { getEntities, queryMetrics, type Entity, type MetricsResponse } from "@/lib/dynatrace";
 
 const FROM = "now-2h";
+const NODE_CLUSTER_SELECTOR =
+  'builtin:kubernetes.node.cpu_usage:splitBy("dt.entity.kubernetes_cluster","dt.entity.kubernetes_node"):limit(500)';
 
 const NODE_METRICS = {
   cpuUsage: "builtin:kubernetes.node.cpu_usage:splitBy()",
@@ -74,27 +76,60 @@ function cleanEntities(entities: Entity[]) {
   }));
 }
 
+function nodeClusterMap(metric?: MetricsResponse) {
+  const map = new Map<string, string>();
+  const series = metric?.result?.[0]?.data ?? [];
+
+  series.forEach((item) => {
+    const clusterId =
+      item.dimensionMap?.["dt.entity.kubernetes_cluster"] ??
+      item.dimensions?.find((dimension) => dimension.startsWith("KUBERNETES_CLUSTER-"));
+    const nodeId =
+      item.dimensionMap?.["dt.entity.kubernetes_node"] ??
+      item.dimensions?.find((dimension) => dimension.startsWith("KUBERNETES_NODE-"));
+
+    if (clusterId && nodeId) map.set(nodeId, clusterId);
+  });
+
+  return map;
+}
+
 export async function GET(req: NextRequest) {
   if (!getSession()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const nodeId = req.nextUrl.searchParams.get("nodeId");
+  const clusterId = req.nextUrl.searchParams.get("clusterId");
 
   try {
-    const [clustersResponse, nodesResponse] = await Promise.all([
+    const [clustersResponse, nodesResponse, topologyResponse] = await Promise.all([
       getEntities("KUBERNETES_CLUSTER"),
       getEntities("KUBERNETES_NODE"),
+      queryMetrics(NODE_CLUSTER_SELECTOR, { from: FROM }),
     ]);
 
     const clusters = cleanEntities(clustersResponse.entities ?? []);
-    const nodes = cleanEntities(nodesResponse.entities ?? []);
+    const clusterByNode = nodeClusterMap(topologyResponse);
+    const nodes = cleanEntities(nodesResponse.entities ?? []).map((node) => ({
+      ...node,
+      clusterId: clusterByNode.get(node.id) ?? null,
+    }));
+    const selectedCluster =
+      clusters.find((cluster) => cluster.id === clusterId) ??
+      clusters.find((cluster) => cluster.name === "pinvest-production-eks-cluster") ??
+      clusters[0] ??
+      null;
+    const nodesForCluster =
+      selectedCluster && nodes.some((node) => node.clusterId === selectedCluster.id)
+        ? nodes.filter((node) => node.clusterId === selectedCluster.id)
+        : nodes;
     const selectedNode =
-      nodes.find((node) => node.id === nodeId) ??
-      nodes.find((node) => node.name === "ip-10-110-131-246.ec2.internal") ??
-      nodes[0];
+      nodesForCluster.find((node) => node.id === nodeId) ??
+      nodesForCluster.find((node) => node.name === "ip-10-110-131-246.ec2.internal") ??
+      nodesForCluster[0];
 
     if (!selectedNode) {
       return NextResponse.json(
-        { error: "No Kubernetes nodes were found in this Dynatrace tenant." },
+        { error: "No Kubernetes nodes were found for the selected cluster." },
         { status: 404 }
       );
     }
@@ -122,9 +157,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       from: FROM,
-      cluster: clusters[0] ?? null,
+      cluster: selectedCluster,
       clusters,
-      nodes,
+      nodes: nodesForCluster,
       selectedNode,
       summary: {
         cpuUsagePct: percent(cpuUsage, cpuAllocatable),

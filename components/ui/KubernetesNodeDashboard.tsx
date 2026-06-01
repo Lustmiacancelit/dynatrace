@@ -12,9 +12,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Cpu, Database, HardDrive, Layers3, Server } from "lucide-react";
+import { Cpu, Database, Layers3 } from "lucide-react";
 
-type EntityOption = { id: string; name: string; type: string };
+type EntityOption = { id: string; name: string; type: string; clusterId?: string | null };
 type Point = { timestamp: number; time: string; value: number };
 
 type KubernetesPayload = {
@@ -215,17 +215,22 @@ function QuotaTable({
 }
 
 export default function KubernetesNodeDashboard() {
+  const [selectedClusterId, setSelectedClusterId] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState("");
   const [data, setData] = useState<KubernetesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = selectedNodeId ? `?nodeId=${encodeURIComponent(selectedNodeId)}` : "";
+    const params = new URLSearchParams();
+    if (selectedClusterId) params.set("clusterId", selectedClusterId);
+    if (selectedNodeId) params.set("nodeId", selectedNodeId);
+    const query = params.toString() ? `?${params.toString()}` : "";
+
     setLoading(true);
     setError(null);
 
-    fetch(`/api/dynatrace/kubernetes${params}`)
+    fetch(`/api/dynatrace/kubernetes${query}`)
       .then((response) => response.json())
       .then((json: KubernetesPayload) => {
         if (json.error) {
@@ -233,11 +238,12 @@ export default function KubernetesNodeDashboard() {
           return;
         }
         setData(json);
+        if (!selectedClusterId && json.cluster?.id) setSelectedClusterId(json.cluster.id);
         if (!selectedNodeId && json.selectedNode?.id) setSelectedNodeId(json.selectedNode.id);
       })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [selectedNodeId]);
+  }, [selectedClusterId, selectedNodeId]);
 
   const cpuRows = useMemo(() => {
     if (!data) return [];
@@ -288,10 +294,20 @@ export default function KubernetesNodeDashboard() {
           <label className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-500">
             Cluster
           </label>
-          <div className="flex h-11 items-center gap-2 rounded-md border border-white/10 bg-[#241a36] px-3 text-sm font-semibold text-slate-100">
-            <Server className="h-4 w-4 text-[#8b5cf6]" />
-            <span className="truncate">{data.cluster?.name ?? "Unknown cluster"}</span>
-          </div>
+          <select
+            className="h-11 w-full rounded-md border border-white/10 bg-[#241a36] px-3 text-sm font-semibold text-slate-100 outline-none transition focus:border-[#8b5cf6]"
+            value={selectedClusterId}
+            onChange={(event) => {
+              setSelectedClusterId(event.target.value);
+              setSelectedNodeId("");
+            }}
+          >
+            {data.clusters.map((cluster) => (
+              <option key={cluster.id} value={cluster.id}>
+                {cluster.name}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="min-w-0 flex-1">
           <label className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-500">
