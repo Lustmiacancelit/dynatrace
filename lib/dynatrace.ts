@@ -36,6 +36,8 @@ export type MetricsResponse = {
   result: Array<{
     metricId: string;
     data: Array<{
+      dimensions?: string[];
+      dimensionMap?: Record<string, string>;
       timestamps: number[];
       values: (number | null)[];
     }>;
@@ -100,6 +102,21 @@ export const getMetrics = (
   resolution?: string
 ): Promise<MetricsResponse> =>
   dtFetch("metrics/query", { metricSelector, from, resolution });
+
+export const queryMetrics = (
+  metricSelector: string,
+  params?: {
+    from?: string;
+    resolution?: string;
+    entitySelector?: string;
+  }
+): Promise<MetricsResponse> =>
+  dtFetch("metrics/query", {
+    metricSelector,
+    from: params?.from ?? "now-1h",
+    resolution: params?.resolution,
+    entitySelector: params?.entitySelector,
+  });
 
 export const getLogs = (
   query = "",
