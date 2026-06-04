@@ -30,15 +30,23 @@ const severityClass: Record<Issue["severity"], string> = {
 
 export const emptyEngine: EngineState = { loading: false, error: null, result: null };
 
-export default function AIDialog({ state }: { state: EngineState }) {
+function EnginePanel({
+  title,
+  description,
+  state,
+}: {
+  title: string;
+  description: string;
+  state: EngineState;
+}) {
   if (!state.loading && !state.error && !state.result) return null;
 
   return (
-    <section className="mt-5 rounded-lg border border-white/10 bg-[#0d1117]">
+    <section className="rounded-lg border border-white/10 bg-[#0d1117]">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">AI Analysis</h2>
-          <p className="text-xs text-slate-500">Claude compares the client log with Dynatrace output.</p>
+          <h2 className="text-sm font-semibold text-white">{title}</h2>
+          <p className="text-xs text-slate-500">{description}</p>
         </div>
         {state.result && (
           <span
@@ -108,5 +116,33 @@ export default function AIDialog({ state }: { state: EngineState }) {
         )}
       </div>
     </section>
+  );
+}
+
+export default function AIDialog({
+  claude,
+  codex,
+}: {
+  claude: EngineState;
+  codex: EngineState;
+}) {
+  const hasClaude = claude.loading || claude.error || claude.result;
+  const hasCodex = codex.loading || codex.error || codex.result;
+
+  if (!hasClaude && !hasCodex) return null;
+
+  return (
+    <div className={`mt-5 grid gap-4 ${hasClaude && hasCodex ? "xl:grid-cols-2" : "grid-cols-1"}`}>
+      <EnginePanel
+        title="Claude Analysis"
+        description="Operational log comparison and likely runtime cause."
+        state={claude}
+      />
+      <EnginePanel
+        title="Codex Investigation"
+        description="Code-oriented investigation: likely files, handlers, guards, and config to inspect."
+        state={codex}
+      />
+    </div>
   );
 }

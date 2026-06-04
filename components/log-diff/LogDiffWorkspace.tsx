@@ -76,8 +76,13 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-async function fetchAnalysis(clientLog: string, dtLog: string, diffSummary: string): Promise<AnalysisResult> {
-  const res = await fetch("/api/log-diff/analyze", {
+async function fetchAnalysis(
+  endpoint: string,
+  clientLog: string,
+  dtLog: string,
+  diffSummary: string
+): Promise<AnalysisResult> {
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ clientLog, dtLog, diffSummary }),
@@ -116,7 +121,8 @@ export default function LogDiffWorkspace() {
   const [docForm, setDocForm] = useState({ title: "", type: "Runbook", body: "" });
   const [ticketForm, setTicketForm] = useState({ subject: "", priority: "Medium", message: "" });
   const [supportStatus, setSupportStatus] = useState<string | null>(null);
-  const [aiState, setAiState] = useState<EngineState>(emptyEngine);
+  const [claudeState, setClaudeState] = useState<EngineState>(emptyEngine);
+  const [codexState, setCodexState] = useState<EngineState>(emptyEngine);
   const analysisRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,7 +144,8 @@ export default function LogDiffWorkspace() {
     diffResult &&
       (diffResult.stats.added > 0 || diffResult.stats.removed > 0 || diffResult.stats.changed > 0)
   );
-  const analyzeEnabled = hasDiff && !aiState.loading;
+  const anyLoading = claudeState.loading || codexState.loading;
+  const analyzeEnabled = hasDiff && !anyLoading;
 
   const saveHistory = useCallback(
     (result: { rows: DiffRow[]; stats: DiffStats }) => {
@@ -162,7 +169,8 @@ export default function LogDiffWorkspace() {
     if (!clientLog.trim() && !dtLog.trim()) return;
     const result = computeDiff(clientLog, dtLog);
     setDiffResult(result);
-    setAiState(emptyEngine);
+    setClaudeState(emptyEngine);
+    setCodexState(emptyEngine);
     saveHistory(result);
   }, [clientLog, dtLog, saveHistory]);
 
@@ -177,20 +185,31 @@ export default function LogDiffWorkspace() {
     return () => window.removeEventListener("keydown", handler);
   }, [runCompare]);
 
-  const runAi = async (rows: DiffRow[]) => {
-    setAiState({ loading: true, error: null, result: null });
+  const runAi = async (
+    engine: "claude" | "codex",
+    rows: DiffRow[]
+  ) => {
+    const setState = engine === "claude" ? setClaudeState : setCodexState;
+    const endpoint = engine === "claude" ? "/api/log-diff/analyze" : "/api/log-diff/analyze-codex";
+
+    setState({ loading: true, error: null, result: null });
     setTimeout(() => analysisRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
 
     try {
-      const result = await fetchAnalysis(clientLog, dtLog, buildDiffSummary(rows));
-      setAiState({ loading: false, error: null, result });
+      const result = await fetchAnalysis(endpoint, clientLog, dtLog, buildDiffSummary(rows));
+      setState({ loading: false, error: null, result });
     } catch (error) {
-      setAiState({
+      setState({
         loading: false,
         error: error instanceof Error ? error.message : String(error),
         result: null,
       });
     }
+  };
+
+  const runBothAi = (rows: DiffRow[]) => {
+    runAi("claude", rows);
+    runAi("codex", rows);
   };
 
   const addDocument = (event: React.FormEvent) => {
@@ -271,7 +290,8 @@ export default function LogDiffWorkspace() {
                   setClientLog("");
                   setDtLog("");
                   setDiffResult(null);
-                  setAiState(emptyEngine);
+                  setClaudeState(emptyEngine);
+                  setCodexState(emptyEngine);
                 }}
                 className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-400 transition hover:text-white"
               >
@@ -291,10 +311,24 @@ export default function LogDiffWorkspace() {
               </button>
               <button
                 disabled={!analyzeEnabled}
-                onClick={() => diffResult && runAi(diffResult.rows)}
+                onClick={() => diffResult && runAi("claude", diffResult.rows)}
                 className="rounded-lg border border-[#818cf8]/40 bg-[#6366f1]/10 px-3 py-2 text-sm font-semibold text-[#a5b4fc] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Analyze with Claude
+              </button>
+              <button
+                disabled={!analyzeEnabled}
+                onClick={() => diffResult && runAi("codex", diffResult.rows)}
+                className="rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Investigate with Codex
+              </button>
+              <button
+                disabled={!analyzeEnabled}
+                onClick={() => diffResult && runBothAi(diffResult.rows)}
+                className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Analyze both
               </button>
             </div>
 
@@ -323,7 +357,7 @@ export default function LogDiffWorkspace() {
 
             {diffResult && <LogDiff rows={diffResult.rows} stats={diffResult.stats} />}
             <div ref={analysisRef}>
-              <AIDialog state={aiState} />
+              <AIDialog claude={claudeState} codex={codexState} />
             </div>
           </section>
         )}
