@@ -6,10 +6,10 @@ import {
   BarChart2,
   FileText,
   AlertTriangle,
-  Server,
   Terminal,
   BookOpen,
   ShieldAlert,
+  Network,
 } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -17,6 +17,7 @@ const NAV = [
   { href: "/dashboard", labelKey: "nav.overview", icon: Activity, exact: true },
   { href: "/dashboard/metrics", labelKey: "nav.metrics", icon: BarChart2 },
   { href: "/dashboard/logs", labelKey: "nav.logs", icon: FileText },
+  { href: "/dashboard/traces", labelKey: "nav.traces", icon: Network },
   { href: "/dashboard/problems", labelKey: "nav.problems", icon: AlertTriangle },
   { href: "/dashboard/builder", labelKey: "nav.builder", icon: Terminal },
   { href: "/dashboard/diff", labelKey: "nav.diff", icon: FileText },
