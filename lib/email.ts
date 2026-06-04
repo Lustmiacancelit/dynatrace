@@ -74,3 +74,35 @@ export async function sendApprovedLoginEmail(input: {
     `,
   });
 }
+
+export async function sendSupportTicketEmail(input: {
+  subject: string;
+  priority?: string;
+  message: string;
+  requesterEmail?: string;
+  createdAt?: string;
+}) {
+  const createdAt = input.createdAt || new Date().toISOString();
+  return sendResendEmail({
+    to: ["support@flowlog.dev"],
+    subject: `FlowLog support: ${input.subject}`,
+    text: `FlowLog support ticket
+
+Subject: ${input.subject}
+Priority: ${input.priority || "Medium"}
+Requester: ${input.requesterEmail || "Unknown"}
+Created: ${createdAt}
+
+${input.message}
+`,
+    html: `
+      <h2>FlowLog support ticket</h2>
+      <p><strong>Subject:</strong> ${input.subject}</p>
+      <p><strong>Priority:</strong> ${input.priority || "Medium"}</p>
+      <p><strong>Requester:</strong> ${input.requesterEmail || "Unknown"}</p>
+      <p><strong>Created:</strong> ${createdAt}</p>
+      <p><strong>Message:</strong></p>
+      <p>${input.message.replaceAll("\n", "<br>")}</p>
+    `,
+  });
+}

@@ -19,6 +19,7 @@ const NAV = [
   { href: "/dashboard/logs", labelKey: "nav.logs", icon: FileText },
   { href: "/dashboard/problems", labelKey: "nav.problems", icon: AlertTriangle },
   { href: "/dashboard/builder", labelKey: "nav.builder", icon: Terminal },
+  { href: "/dashboard/diff", labelKey: "nav.diff", icon: FileText },
   { href: "/dashboard/docs", labelKey: "nav.docs", icon: BookOpen },
 ];
 
