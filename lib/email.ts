@@ -1,4 +1,5 @@
 import { ADMIN_EMAILS } from "./auth";
+import type { Problem } from "./dynatrace";
 
 const FROM_EMAIL = "FlowLog Dynatrace <support@flowlog.dev>";
 
@@ -7,6 +8,7 @@ async function sendResendEmail(payload: {
   subject: string;
   html: string;
   text: string;
+  idempotencyKey?: string;
 }) {
   const key = process.env.RESEND_API_KEY;
   if (!key) {
@@ -18,8 +20,15 @@ async function sendResendEmail(payload: {
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
+      ...(payload.idempotencyKey ? { "Idempotency-Key": payload.idempotencyKey } : {}),
     },
-    body: JSON.stringify({ from: FROM_EMAIL, ...payload }),
+    body: JSON.stringify({
+      from: FROM_EMAIL,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+    }),
   });
 
   if (!res.ok) {
@@ -103,6 +112,65 @@ ${input.message}
       <p><strong>Created:</strong> ${createdAt}</p>
       <p><strong>Message:</strong></p>
       <p>${input.message.replaceAll("\n", "<br>")}</p>
+    `,
+  });
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatProblemTime(value: number) {
+  if (!value) return "Unknown";
+  return new Date(value).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "America/New_York",
+  });
+}
+
+export async function sendDynatraceProblemAlertEmail(problem: Problem) {
+  const envUrl = process.env.DYNATRACE_ENV_URL?.replace(/\/$/, "");
+  const problemUrl = envUrl
+    ? `${envUrl}/ui/problems/${encodeURIComponent(problem.problemId)}`
+    : `${getAppUrl()}/dashboard/problems`;
+  const impacted = problem.impactedEntities?.map((entity) => entity.name).filter(Boolean) ?? [];
+  const severity = problem.severityLevel || "UNKNOWN";
+  const title = problem.title || problem.displayId || problem.problemId;
+
+  return sendResendEmail({
+    to: ["fabio.almeida@pinvestcapital.com"],
+    subject: `[Dynatrace ${severity}] ${title}`,
+    idempotencyKey: `dynatrace-problem-${problem.problemId}`,
+    text: `Dynatrace problem alert
+
+Title: ${title}
+Display ID: ${problem.displayId}
+Problem ID: ${problem.problemId}
+Severity: ${severity}
+Status: ${problem.status}
+Started: ${formatProblemTime(problem.startTime)}
+Impacted entities: ${impacted.length ? impacted.join(", ") : "None reported"}
+
+Open in Dynatrace: ${problemUrl}
+Open in FlowLog: ${getAppUrl()}/dashboard/problems
+`,
+    html: `
+      <h2>Dynatrace problem alert</h2>
+      <p><strong>Title:</strong> ${escapeHtml(title)}</p>
+      <p><strong>Display ID:</strong> ${escapeHtml(problem.displayId || "-")}</p>
+      <p><strong>Problem ID:</strong> ${escapeHtml(problem.problemId)}</p>
+      <p><strong>Severity:</strong> ${escapeHtml(severity)}</p>
+      <p><strong>Status:</strong> ${escapeHtml(problem.status || "-")}</p>
+      <p><strong>Started:</strong> ${escapeHtml(formatProblemTime(problem.startTime))}</p>
+      <p><strong>Impacted entities:</strong> ${escapeHtml(impacted.length ? impacted.join(", ") : "None reported")}</p>
+      <p><a href="${problemUrl}">Open problem in Dynatrace</a></p>
+      <p><a href="${getAppUrl()}/dashboard/problems">Open FlowLog problems dashboard</a></p>
     `,
   });
 }
