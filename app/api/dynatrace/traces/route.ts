@@ -20,6 +20,8 @@ function recordsFromResult(result: unknown): Record<string, unknown>[] {
 function buildTraceQuery(input: {
   from: string;
   endpointMode: string;
+  endpoint: string;
+  requestState: string;
   service: string;
   search: string;
   traceId: string;
@@ -32,7 +34,15 @@ function buildTraceQuery(input: {
     filters.push("`span.kind` == \"server\"");
     if (input.endpointMode === "exclude-health") {
       filters.push("(`endpoint.name` != \"/actuator/health\" or isNull(`endpoint.name`))");
+    } else if (input.endpointMode === "exact" && input.endpoint) {
+      filters.push(`\`endpoint.name\` == ${dqlString(input.endpoint)}`);
     }
+  }
+
+  if (input.requestState === "failed") {
+    filters.push("`request.is_failed` == true");
+  } else if (input.requestState === "successful") {
+    filters.push("(`request.is_failed` == false or isNull(`request.is_failed`))");
   }
 
   if (input.service) {
@@ -59,10 +69,12 @@ export async function GET(req: NextRequest) {
   const fromParam = req.nextUrl.searchParams.get("from") ?? "-30m";
   const from = TIMEFRAMES.has(fromParam) ? fromParam : "-30m";
   const endpointMode = req.nextUrl.searchParams.get("endpointMode") ?? "exclude-health";
+  const endpoint = req.nextUrl.searchParams.get("endpoint")?.trim() ?? "";
+  const requestState = req.nextUrl.searchParams.get("requestState") ?? "all";
   const service = req.nextUrl.searchParams.get("service")?.trim() ?? "";
   const search = req.nextUrl.searchParams.get("search")?.trim() ?? "";
   const traceId = req.nextUrl.searchParams.get("traceId")?.trim() ?? "";
-  const query = buildTraceQuery({ from, endpointMode, service, search, traceId });
+  const query = buildTraceQuery({ from, endpointMode, endpoint, requestState, service, search, traceId });
 
   try {
     const result = await executeDql(query, from, "now");
