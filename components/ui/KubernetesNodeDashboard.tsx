@@ -293,13 +293,36 @@ function QuotaTable({
 }
 
 function WorkloadsTable({ workloads }: { workloads: NonNullable<KubernetesPayload["workloads"]> }) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredWorkloads = normalizedQuery
+    ? workloads.filter((workload) => {
+        const haystack = `${workload.name} ${workload.id}`.toLowerCase();
+        return haystack.includes(normalizedQuery);
+      })
+    : workloads;
+
   return (
     <section className="overflow-hidden rounded-md border border-white/10 bg-[#171123]">
-      <div className="border-b border-white/10 px-4 py-3">
-        <h3 className="text-sm font-semibold text-slate-100">Workloads, deployments, and pods</h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Pulled from Dynatrace Kubernetes workload metrics for the selected cluster.
-        </p>
+      <div className="space-y-3 border-b border-white/10 px-4 py-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-100">Workloads, deployments, and pods</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Pulled from Dynatrace Kubernetes workload metrics for the selected cluster.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <input
+            className="h-10 w-full rounded-md border border-white/10 bg-[#0c1017] px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-[#8b5cf6] sm:max-w-md"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search workload, deployment, or ID..."
+            type="search"
+          />
+          <span className="text-xs font-mono text-slate-500">
+            {filteredWorkloads.length} / {workloads.length}
+          </span>
+        </div>
       </div>
       <div className="max-h-[520px] overflow-auto">
         <table className="w-full min-w-[1320px] text-left text-sm">
@@ -323,7 +346,7 @@ function WorkloadsTable({ workloads }: { workloads: NonNullable<KubernetesPayloa
             </tr>
           </thead>
           <tbody className="divide-y divide-white/10 text-slate-100">
-            {workloads.map((workload) => (
+            {filteredWorkloads.map((workload) => (
               <tr key={workload.id} className="hover:bg-white/[0.03]">
                 <td className="max-w-[280px] px-4 py-2">
                   <p className="truncate font-medium">{workload.name}</p>
@@ -345,6 +368,13 @@ function WorkloadsTable({ workloads }: { workloads: NonNullable<KubernetesPayloa
                 <td className="px-4 py-2 font-mono">{workload.oomKills ?? "null"}</td>
               </tr>
             ))}
+            {filteredWorkloads.length === 0 ? (
+              <tr>
+                <td className="px-4 py-8 text-center text-sm text-slate-500" colSpan={15}>
+                  No workloads match that search.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
