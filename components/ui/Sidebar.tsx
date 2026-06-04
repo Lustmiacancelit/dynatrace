@@ -10,12 +10,14 @@ import {
   BookOpen,
   ShieldAlert,
   Network,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 
 const NAV = [
   { href: "/dashboard", labelKey: "nav.overview", icon: Activity, exact: true },
   { href: "/dashboard/metrics", labelKey: "nav.metrics", icon: BarChart2 },
+  { href: "/dashboard/jobs", labelKey: "nav.jobs", icon: BriefcaseBusiness },
   { href: "/dashboard/logs", labelKey: "nav.logs", icon: FileText },
   { href: "/dashboard/traces", labelKey: "nav.traces", icon: Network },
   { href: "/dashboard/problems", labelKey: "nav.problems", icon: AlertTriangle },
