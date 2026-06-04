@@ -76,6 +76,9 @@ export type Entity = {
   entityId: string;
   displayName: string;
   type: string;
+  properties?: Record<string, unknown>;
+  fromRelationships?: Record<string, Array<{ id: string; type: string }>>;
+  toRelationships?: Record<string, Array<{ id: string; type: string }>>;
 };
 
 export type EntitiesResponse = {
@@ -128,8 +131,16 @@ export const getLogs = (
 export const getProblems = (): Promise<ProblemsResponse> =>
   dtFetch("problems", { problemSelector: "status(open)" });
 
-export const getEntities = (type = "SERVICE"): Promise<EntitiesResponse> =>
-  dtFetch("entities", { entitySelector: `type(${type})`, pageSize: "500" });
+export const getEntities = (
+  type = "SERVICE",
+  params?: { fields?: string; from?: string }
+): Promise<EntitiesResponse> =>
+  dtFetch("entities", {
+    entitySelector: `type(${type})`,
+    pageSize: "500",
+    fields: params?.fields,
+    from: params?.from,
+  });
 
 // ─── Natural Language → DQL ───────────────────────────────────────────────
 
